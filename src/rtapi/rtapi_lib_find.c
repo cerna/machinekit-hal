@@ -13,6 +13,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "rtapi.h"
+
 #include "rtapi_lib_find.h"
 
 #define NN_DO(val, action) \
@@ -32,6 +34,44 @@
         })                            \
     } while (false);
 
+bool is_machinekit_flavor_solib_v1(const char *real_path, size_t size_of_input, void *input, flavor_module_v1_found_callback flavor_find)
+{
+    // In this function, we are assuming and hoping that libELF will translate the payload
+    int retval = 0;
+    unsigned int api;
+    unsigned int weight;
+    char *name;
+    if (size_of_input < sizeof(unsigned int) * 2 + 1)
+    {
+        // We want payload which has one unsigned integer for API version number,
+        // one unsigned integer for flavour weight and at least empty null
+        // terminated string for flavour name
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI lib find: Found possible library with wrong byte payload on path %s", real_path);
+        return false;
+    }
+    api = *((unsigned int *)input);
+    input = input + sizeof(unsigned int);
+    if (api != 1)
+    {
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI lib find: Found possible library with wrong API version %d on path %s", api, real_path);
+        return false;
+    }
+    weight = *((unsigned int *)input);
+    input = input + sizeof(unsigned int);
+    name = malloc(size_of_input - 2 * sizeof(unsigned int));
+    retval = snprintf(name, size_of_input - 2 * sizeof(unsigned int), "%s", (char *)input);
+    if (retval < 1)
+    {
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI lib find: Found possible library with wrong name %s on path %s", name, real_path);
+        free(name);
+        return false;
+    }
+    rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI lib find: Found real library on path %s", real_path);
+    NN_DO(flavor_find, return flavor_find(real_path, name, weight))
+    free(name);
+    return false;
+}
+
 bool test_file_for_module_data(const char *real_path, const char *module_section, lib_callback function_callback)
 {
     int fd = -1;
@@ -47,7 +87,7 @@ bool test_file_for_module_data(const char *real_path, const char *module_section
 
     if (elf_version(EV_CURRENT) == EV_NONE)
     {
-        //rtapi_print_msg(RTAPI_MSG_ERR,"RTAPI: libELF failed to initialize");
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI lib find: LibELF failed to initialize");
         goto end;
     }
 
@@ -115,6 +155,7 @@ bool test_file_for_module_data(const char *real_path, const char *module_section
                 memcpy(&payload + payload_transferred_size, payload_data->d_buf, payload_data->d_size);
                 payload_transferred_size += payload_data->d_size;
             }
+            rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI lib find: Found possible library with ELF section %s on path %s", module_section, real_path);
             NN_DO(function_callback, retval = function_callback(real_path, payload_transferred_size, (void *)&payload))
             break;
         }
@@ -141,7 +182,7 @@ int for_each_node(const char *real_path, dir_found_callback directory_find, file
     if (folder == NULL)
     {
         int error = errno;
-        //rtapi_print_msg(RTAPI_MSG_DBG,"%l->%s"error,strerror(error));
+        rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI lib find: There was an error opening folder %s (%d)->%s", real_path, error, strerror(error));
         goto end;
     }
     while ((entry = readdir(folder)) != NULL)
@@ -156,7 +197,7 @@ int for_each_node(const char *real_path, dir_found_callback directory_find, file
         if (realpath((const char *)&folder_node_path, real_node_path) != real_node_path)
         {
             int error = errno;
-            //rtapi_print_msg(RTAPI_MSG_DBG,"%l->%s"error,strerror(error));
+            rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI lib find: There was an error getting information about real path of node (%d)->%s, %s", error, strerror(error), folder_node_path);
             continue;
         }
         switch (entry->d_type)
@@ -173,7 +214,7 @@ int for_each_node(const char *real_path, dir_found_callback directory_find, file
             if (fstatat(dirfd(folder), entry->d_name, entry_stat, AT_SYMLINK_NOFOLLOW) != 0)
             {
                 int error = errno;
-                //rtapi_print_msg(RTAPI_MSG_DBG,"%l->%s"error,strerror(error));
+                rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI lib find: There was an error getting information about node (%d)->%s", error, strerror(error));
                 continue;
             }
             if (S_ISDIR(entry_stat->st_mode))
