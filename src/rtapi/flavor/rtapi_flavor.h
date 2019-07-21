@@ -149,6 +149,35 @@ extern "C"
     extern int flavor_mocking;
     extern int flavor_mocking_err;
 
+/* Stamping MACRO for the tagging of Machinekit flavour shared library
+ *
+ * Idea is to create consistent array in ELF file section "machinekit-flavor"
+ * which can then be read by the libELF powered tool from RTAPI shared library module
+ * 
+ * machinekit_flavor_name =         Name of flavour library, has to be the same as name in
+ *                                  flavor_descriptor_t.name                                        //TODO: Can this be automated?
+ *                                  VALUE: const char*
+ * 
+ * machinekit_flavor_weight =       Ordering in which rtapi.so will try to load known flavour
+ *                                  libraries, higher number means the library will be tried
+ *                                  sooner, has sense only for automatic (default) loading
+ *                                  VALUE: unsigned integer
+ * 
+ * machinekit_flavor_api_version =  RESERVED number for future changes in rtapi,
+ *                                  for now only 1 has to be used
+ *                                  VALUE: unsigned integer
+ * 
+ * USE as FLAVOR_STAMP(evl-core, 2, 1)
+ * will create memory array {unsigned int = API version, unsigned int = weight, null terminated char array = name of flavour}
+ */
+#define FLAVOR_NAME_DEFINE(flavor_name) const char flavor_name[] __attribute__((section("machinekit-flavor"))) = #flavor_name;
+#define FLAVOR_WEIGHT_DEFINE(flavor_weight) const unsigned int weight __attribute__((section("machinekit-flavor"))) = flavor_weight;
+#define FLAVOR_API_VERSION_DEFINE(flavor_api_version) const unsigned int api_version __attribute__((section("machinekit-flavor"))) = flavor_api_version;
+#define FLAVOR_STAMP(machinekit_flavor_name, machinekit_flavor_weight, machinekit_flavor_api_version) \
+    FLAVOR_API_VERSION_DEFINE(machinekit_flavor_api_version)                                          \
+    FLAVOR_WEIGHT_DEFINE(machinekit_flavor_weight)                                                    \
+    FLAVOR_NAME_DEFINE(machinekit_flavor_name)
+
 #ifdef __cplusplus
 }
 #endif
