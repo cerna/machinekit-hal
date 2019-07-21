@@ -2,30 +2,31 @@
 #define RTAPI_FLAVOR_H
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #include "rtapi_common.h"
 
 // Flavor features:  flavor_descriptor_t.flags bits for configuring flavor
 // - Whether iopl() needs to be called
-#define  FLAVOR_DOES_IO                    RTAPI_BIT(0)
+#define FLAVOR_DOES_IO RTAPI_BIT(0)
 // - Whether flavor has hard real-time latency
-#define  FLAVOR_IS_RT                      RTAPI_BIT(1)
+#define FLAVOR_IS_RT RTAPI_BIT(1)
 // - Whether flavor has hard real-time latency
-#define  FLAVOR_TIME_NO_CLOCK_MONOTONIC    RTAPI_BIT(2)
+#define FLAVOR_TIME_NO_CLOCK_MONOTONIC RTAPI_BIT(2)
 // - Whether flavor runs outside RTAPI threads
-#define  FLAVOR_NOT_RTAPI                  RTAPI_BIT(3)
+#define FLAVOR_NOT_RTAPI RTAPI_BIT(3)
 
 #define MAX_FLAVOR_NAME_LEN 20
 
 // The exception code puts structs in shm in an opaque blob; this is used to
 // check the allocated storage is large enough
 // https://stackoverflow.com/questions/807244/
-#define ASSERT_SIZE_WITHIN(type, size)                                \
-   typedef char assertion_failed_##type##_[2*!!(sizeof(type) <= size)-1]
+#define ASSERT_SIZE_WITHIN(type, size) \
+    typedef char assertion_failed_##type##_[2 * !!(sizeof(type) <= size) - 1]
 
-
+    /*
 // Put these in order of preference
     typedef enum RTAPI_FLAVOR_ID {
         RTAPI_FLAVOR_UNCONFIGURED_ID = 0,
@@ -34,10 +35,9 @@ extern "C" {
         RTAPI_FLAVOR_RT_PREEMPT_ID,
         RTAPI_FLAVOR_XENOMAI_ID,
     } rtapi_flavor_id_t;
-
+*/
 
     // Hook type definitions for the flavor_descriptor_t struct
-    typedef int (*rtapi_can_run_flavor_t)(void);
     typedef void (*rtapi_exception_handler_hook_t)(
         int type, rtapi_exception_detail_t *detail, int level);
     typedef int (*rtapi_module_init_hook_t)(void);
@@ -59,11 +59,11 @@ extern "C" {
     typedef int (*rtapi_task_pll_set_correction_hook_t)(long value);
 
     // All flavor-specific data is represented in this struct
-    typedef struct {
+    typedef struct
+    {
         const char *name;
-        const rtapi_flavor_id_t flavor_id;
+        const unsigned int flavor_id;
         const unsigned long flags;
-        const rtapi_can_run_flavor_t can_run_flavor;
         const rtapi_exception_handler_hook_t exception_handler_hook;
         const rtapi_module_init_hook_t module_init_hook;
         const rtapi_module_exit_hook_t module_exit_hook;
@@ -83,26 +83,31 @@ extern "C" {
         const rtapi_task_pll_get_reference_hook_t task_pll_get_reference_hook;
         const rtapi_task_pll_set_correction_hook_t task_pll_set_correction_hook;
     } flavor_descriptor_t;
-    typedef flavor_descriptor_t * flavor_descriptor_ptr;
+    typedef flavor_descriptor_t *flavor_descriptor_ptr;
 
     // The global flavor_descriptor; points at the configured flavor
     extern flavor_descriptor_ptr flavor_descriptor;
 
+    // Main point function by which new flavor module can register itself
+    extern void register_flavor(flavor_descriptor_ptr descriptor_to_register);
+
+    // Main point function by which registered flavor module can unregister itself
+    extern void unregister_flavor(flavor_descriptor_ptr descriptor_to_unregister);
+
     // Wrappers around flavor_descriptor
-    typedef const char * (flavor_names_t)(flavor_descriptor_ptr ** fd);
+    typedef const char *(flavor_names_t)(flavor_descriptor_ptr **fd);
     extern flavor_names_t flavor_names;
-    typedef flavor_descriptor_ptr (flavor_byname_t)(const char *flavorname);
+    typedef flavor_descriptor_ptr(flavor_byname_t)(const char *flavorname);
     extern flavor_byname_t flavor_byname;
     extern flavor_descriptor_ptr flavor_byid(rtapi_flavor_id_t flavor_id);
-    typedef flavor_descriptor_ptr (flavor_default_t)(void);
+    typedef flavor_descriptor_ptr(flavor_default_t)(void);
     extern flavor_default_t flavor_default;
-    typedef int (flavor_is_configured_t)(void);
+    typedef int(flavor_is_configured_t)(void);
     extern flavor_is_configured_t flavor_is_configured;
-    typedef void (flavor_install_t)(flavor_descriptor_ptr flavor_id);
+    typedef void(flavor_install_t)(flavor_descriptor_ptr flavor_id);
     extern flavor_install_t flavor_install;
 
     // Wrappers for functions in the flavor_descriptor_t
-    extern int flavor_can_run_flavor(flavor_descriptor_ptr f);
     extern int flavor_exception_handler_hook(
         flavor_descriptor_ptr f, int type, rtapi_exception_detail_t *detail,
         int level);
@@ -134,10 +139,10 @@ extern "C" {
         flavor_descriptor_ptr f, long value);
 
     // Accessors for flavor_descriptor
-    typedef const char * (flavor_name_t)(flavor_descriptor_ptr f);
+    typedef const char *(flavor_name_t)(flavor_descriptor_ptr f);
     extern flavor_name_t flavor_name;
     extern int flavor_id(flavor_descriptor_ptr f);
-    typedef int (flavor_feature_t)(flavor_descriptor_ptr f, int feature);
+    typedef int(flavor_feature_t)(flavor_descriptor_ptr f, int feature);
     extern flavor_feature_t flavor_feature;
 
     // Help for unit test mocking
@@ -147,6 +152,5 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif
