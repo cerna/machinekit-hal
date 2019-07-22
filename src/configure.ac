@@ -687,8 +687,8 @@ AC_ARG_ENABLE(dev,
 
 ##############################################################################
 # Subsection 2.3.1                                                           #
-# CK, protobuf, zmq, websockets, json, uriparse, avahi-client packages           #
-# NML
+# CK, protobuf, zmq, websockets, json, uriparse, avahi-client packages       #
+# NML, libELF                                                                #
 ##############################################################################
 
 PKG_CHECK_MODULES(
@@ -789,6 +789,12 @@ PKG_CHECK_MODULES([LIBCGROUP], libcgroup,
         AC_DEFINE(HAVE_LIBCGROUP, [], [libcgroup library available])
 	USE_LIBCGROUP=yes
    ],)
+
+PKG_CHECK_MODULES([LIBELF], [libelf],
+    [
+        AC_DEFINE(HAVE_LIBELF, [], [libELF ELF manipulating library available])
+	USE_LIBELF=yes
+    ],)
 
 AC_MSG_CHECKING(whether to enable NML-using parts)
 AC_ARG_ENABLE(nml,
