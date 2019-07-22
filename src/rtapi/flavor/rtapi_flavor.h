@@ -26,17 +26,6 @@ extern "C"
 #define ASSERT_SIZE_WITHIN(type, size) \
     typedef char assertion_failed_##type##_[2 * !!(sizeof(type) <= size) - 1]
 
-    /*
-// Put these in order of preference
-    typedef enum RTAPI_FLAVOR_ID {
-        RTAPI_FLAVOR_UNCONFIGURED_ID = 0,
-        RTAPI_FLAVOR_ULAPI_ID,
-        RTAPI_FLAVOR_POSIX_ID,
-        RTAPI_FLAVOR_RT_PREEMPT_ID,
-        RTAPI_FLAVOR_XENOMAI_ID,
-    } rtapi_flavor_id_t;
-*/
-
     // Hook type definitions for the flavor_descriptor_t struct
     typedef void (*rtapi_exception_handler_hook_t)(
         int type, rtapi_exception_detail_t *detail, int level);
@@ -61,8 +50,18 @@ extern "C"
     // All flavor-specific data is represented in this struct
     typedef struct
     {
+        // Name represents unique identifier of the flavour API shared library,
+        // there cannot be two on the same system with the same name at the same moment
         const char *name;
+        // Flavor ID represents unique identifier of the flavour API shared library,
+        // there cannot be two on the same system with the same name at the same moment
         const unsigned int flavor_id;
+        // Flavor magic represents version of the flavour API implementation and is unique
+        // only in context of given flavour
+        // Use is intended for volatile flavours where changes in auxiliary API happen often
+        // and to synchronize what parts of Machinekit-HAL expect of flavour with given "name/flavor_id"
+        // and what this exact shared library flavour API implementation can support
+        const unsigned int flavor_magic;
         const unsigned long flags;
         const rtapi_exception_handler_hook_t exception_handler_hook;
         const rtapi_module_init_hook_t module_init_hook;
