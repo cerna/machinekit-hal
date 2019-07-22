@@ -1,6 +1,6 @@
 /********************************************************************
-* Description:  xenomai2.c
-*               This file, 'xenomai2.c', implements the unique
+* Description:  xenomai2loader.c
+*               This file, 'xenomai2loader.c', implements the unique
 *               functions for the Xenomai userland thread system.
 *
 * Copyright (C) 2012 - 2013 John Morris <john AT zultron DOT com>

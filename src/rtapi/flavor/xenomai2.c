@@ -1,3 +1,31 @@
+/********************************************************************
+* Description:  xenomai2.c
+*               This file, 'xenomai2.c', implements the loading sequence
+*               for Xenomai2 flavour module to circumvent the problem with
+*               automatically running the constructor on libXENOMAI when loaded
+*               with 'xenomai2loader.so' and consequentially exiting the application
+*               on system with non-Xenomai kernel running
+*
+* Copyright (C) 2012 - 2013 John Morris <john AT zultron DOT com>
+*                           Michael Haberler <license AT mah DOT priv DOT at>
+*               2019        Jakub Fišer <jakub DOT fiser AT erythio DOT net>
+*
+* This program is free software; you can redistribute it and/or
+* modify it under the terms of the GNU Lesser General Public
+* License as published by the Free Software Foundation; either
+* version 2.1 of the License, or (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public
+* License along with this library; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+********************************************************************/
+
+
 #include <dlfcn.h>
 
 #include "rtapi_flavor.h"

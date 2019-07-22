@@ -1,10 +1,11 @@
 /********************************************************************
-* Description:  xenomai2.h
+* Description:  xenomai2loader.h
 *               This file defines the differences specific to the
 *               the Xenomai user land thread system
 *
 * Copyright (C) 2012 - 2013 John Morris <john AT zultron DOT com>
 *                           Michael Haberler <license AT mah DOT priv DOT at>
+*               2019        Jakub Fišer <jakub DOT fiser AD erythio DOT net>
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public
