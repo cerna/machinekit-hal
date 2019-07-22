@@ -121,30 +121,35 @@ static int xenomai_flavor_check(void)
 static void lib_init(void)
 {
     // Only register the XENOMAI flavour if and only if the current system is capable of running it
-    if (xenomai_can_run_flavor && mod_handle == NULL)
+    if (xenomai_can_run_flavor)
     {
-        // Load the xenomai_loader.so module that does the real work
-        // Both libraries (xenomai2.so and xenomai2loader.so) are tightly coupled and for
-        // security reasons cannot be in two different places
-        mod_handle = dlopen("./xenomai2loader.so", RTLD_GLOBAL | RTLD_NOW);
-        if (!mod_handle)
+        if (mod_handle == NULL)
         {
-            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: XENOMAI2 flavour module: Unable to load xenomai2loader.so: %s\n", dlerror());
+            // Load the xenomai_loader.so module that does the real work
+            // Both libraries (xenomai2.so and xenomai2loader.so) are tightly coupled and for
+            // security reasons cannot be in two different places
+            mod_handle = dlopen("./xenomai2loader.so", RTLD_GLOBAL | RTLD_NOW);
+            if (!mod_handle)
+            {
+                rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: XENOMAI2 flavour module: Unable to load xenomai2loader.so: %s\n", dlerror());
+                return;
+            }
+            // Start the actual constructor (but only if there is destructor too)
+            xenomai2_do_prototype do_load_constructor = dlsym(mod_handle, "do_load");
+            xenomai2_do_prototype do_load_destructor = dlsym(mod_handle, "do_unload");
+            if (do_load_contructor == NULL || do_load_destructor == NULL)
+            {
+                rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: XENOMAI2 flavour module: Unable to load the constructor function do_load from xenomai2loader.so: %s\n", dlerror());
+                return;
+            }
+            do_load_constructor();
             return;
         }
-        // Start the actual constructor (but only if there is destructor too)
-        xenomai2_do_prototype do_load_constructor = dlsym(mod_handle, "do_load");
-        xenomai2_do_prototype do_load_destructor = dlsym(mod_handle, "do_unload");
-        if (do_load_contructor == NULL || do_load_destructor == NULL)
-        {
-            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: XENOMAI2 flavour module: Unable to load the constructor function do_load from xenomai2loader.so: %s\n", dlerror());
-            return;
-        }
-        do_load_constructor();
+        // This should not happen
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: XENOMAI2 flavour module: The library xenomai2.so dlopened twice");
         return;
     }
-    // This should not happen
-    rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: XENOMAI2 flavour module: The library xenomai2.so dlopened twice");
+    rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: XENOMAI2 flavour module: The flavour cannot run");
 }
 static void lib_fini(void)
 {
