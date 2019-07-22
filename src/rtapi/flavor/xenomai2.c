@@ -1,6 +1,6 @@
 /********************************************************************
-* Description:  xenomai.c
-*               This file, 'xenomai.c', implements the unique
+* Description:  xenomai2.c
+*               This file, 'xenomai2.c', implements the unique
 *               functions for the Xenomai userland thread system.
 *
 * Copyright (C) 2012 - 2013 John Morris <john AT zultron DOT com>
@@ -25,7 +25,7 @@
 #include "config.h"
 #include "rtapi.h"
 #include "rtapi_common.h"
-#include "xenomai.h"
+#include "xenomai2.h"
 
 #include <sys/mman.h> /* munlockall() */
 #define XENOMAI_INCLUDE(header) <XENOMAI_SKIN/header>

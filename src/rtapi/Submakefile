@@ -20,8 +20,8 @@ INCLUDES += rtapi rtapi_export rtapi/flavor
 	$(Q)cp  $^ $@
 
 ifeq ($(HAVE_XENOMAI_THREADS),yes)
-XENOMAI_SRC = rtapi/flavor/xenomai.c
-XENOMAI_HEADER = rtapi/flavor/xenomai.h
+XENOMAI_SRC = rtapi/flavor/xenomai2.c
+XENOMAI_HEADER = rtapi/flavor/xenomai2.h
 endif
 
 HEADERS += \
