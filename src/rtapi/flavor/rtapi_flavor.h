@@ -139,7 +139,8 @@ extern "C"
 
     // Accessors for flavor_descriptor
     typedef const char *(flavor_name_t)(flavor_descriptor_ptr f);
-    extern flavor_name_t flavor_name;
+    //Do I need this or do I need to 
+    //extern flavor_name_t flavor_name;
     extern int flavor_id(flavor_descriptor_ptr f);
     typedef int(flavor_feature_t)(flavor_descriptor_ptr f, int feature);
     extern flavor_feature_t flavor_feature;
@@ -169,9 +170,9 @@ extern "C"
  * USE as FLAVOR_STAMP(evl-core, 2, 1)
  * will create memory array {unsigned int = API version, unsigned int = weight, null terminated char array = name of flavour}
  */
-#define FLAVOR_NAME_DEFINE(flavor_name) const char flavor_name[] __attribute__((section("machinekit-flavor"))) = #flavor_name;
-#define FLAVOR_WEIGHT_DEFINE(flavor_weight) const unsigned int weight __attribute__((section("machinekit-flavor"))) = flavor_weight;
-#define FLAVOR_API_VERSION_DEFINE(flavor_api_version) const unsigned int api_version __attribute__((section("machinekit-flavor"))) = flavor_api_version;
+#define FLAVOR_NAME_DEFINE(flavour_name) const char flavor_name[] __attribute__((section("machinekit-flavor"))) = flavour_name;
+#define FLAVOR_WEIGHT_DEFINE(flavour_weight) const unsigned int weight __attribute__((section("machinekit-flavor"))) = flavour_weight;
+#define FLAVOR_API_VERSION_DEFINE(flavour_api_version) const unsigned int api_version __attribute__((section("machinekit-flavor"))) = flavour_api_version;
 #define FLAVOR_STAMP(machinekit_flavor_name, machinekit_flavor_weight, machinekit_flavor_api_version) \
     FLAVOR_API_VERSION_DEFINE(machinekit_flavor_api_version)                                          \
     FLAVOR_WEIGHT_DEFINE(machinekit_flavor_weight)                                                    \

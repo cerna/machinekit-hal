@@ -23,6 +23,9 @@
 
 #include "rtapi_flavor.h"
 
+static void __attribute__((constructor)) lib_init(void);
+static void __attribute__((destructor)) lib_fini(void);
+
 typedef enum {
     XU_EXCEPTION_NONE=0,
 
@@ -66,4 +69,4 @@ typedef struct {
 // Check the stats struct size
 ASSERT_SIZE_WITHIN(xenomai_stats_t, MAX_FLAVOR_THREADSTATUS_SIZE);
 
-extern flavor_descriptor_t flavor_xenomai_descriptor;
+extern flavor_descriptor_t flavor_xenomai2_descriptor;

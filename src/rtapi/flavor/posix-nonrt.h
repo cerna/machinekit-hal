@@ -1,9 +1,10 @@
 /********************************************************************
-* Description:  rt-preempt.h
-*               RT_PREEMPT flavor descriptors
+* Description:  posix-nort.h
+*               POSIX non real-time flavor descriptors
 *
 *
 * Copyright (C) 2019       John Morris <john AT zultron DOT com>
+                2019       Jakub Fišer <jakub DOT fiser AT erythio net>
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public
@@ -25,23 +26,6 @@
 static void __attribute__((constructor)) lib_init(void);
 static void __attribute__((destructor)) lib_fini(void);
 
-typedef enum {
-    RTP_EXCEPTION_NONE=0,
-
-    RTP_DEADLINE_MISSED, // clock_gettime(CLOCK_MONOTONIC) returned 'too late'
-
-    RTP_EXCEPTION_LAST,
-
-} rtpreempt_exception_id_t;
-
-typedef struct {
-    // RTP_SIGNAL: unhandled signal: siginfo_t reference
-    // currently unused - signals handled in rtapi_app
-    void *siginfo;
-} rtpreempt_exception_t;
-// Check the exception struct size
-ASSERT_SIZE_WITHIN(rtpreempt_exception_t, MAX_FLAVOR_EXCEPTION_SIZE);
-
 typedef struct {
 
     int wait_errors; // RT deadline missed
@@ -62,8 +46,8 @@ typedef struct {
     long startup_ru_majflt; // initalisation
     long startup_ru_nivcsw; //
 
-} rtpreempt_stats_t;
+} posix_stats_t;
 // Check the stats struct size
-ASSERT_SIZE_WITHIN(rtpreempt_stats_t, MAX_FLAVOR_THREADSTATUS_SIZE);
+ASSERT_SIZE_WITHIN(posix_stats_t, MAX_FLAVOR_THREADSTATUS_SIZE);
 
-extern flavor_descriptor_t flavor_rt_prempt_descriptor;
+extern flavor_descriptor_t flavor_posix_nonrt_descriptor;
