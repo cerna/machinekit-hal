@@ -2,6 +2,9 @@
 
 #include "rtapi_flavor.h"
 
+static void __attribute__((constructor)) lib_init(void);
+static void __attribute__((destructor)) lib_fini(void);
+
 // Prototype for plugin flavor descriptor updater
 typedef void (*xenomai2_do_prototype)(void);
 

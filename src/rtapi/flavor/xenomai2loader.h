@@ -23,9 +23,6 @@
 
 #include "rtapi_flavor.h"
 
-static void __attribute__((constructor)) lib_init(void);
-static void __attribute__((destructor)) lib_fini(void);
-
 typedef enum {
     XU_EXCEPTION_NONE=0,
 
