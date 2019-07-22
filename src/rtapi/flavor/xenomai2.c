@@ -140,6 +140,11 @@ static void lib_init(void)
             if (do_load_contructor == NULL || do_load_destructor == NULL)
             {
                 rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: XENOMAI2 flavour module: Unable to load the constructor function do_load from xenomai2loader.so: %s\n", dlerror());
+                if (dlclose(mod_handle))
+                {
+                    rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: XENOMAI2 flavour module: Unable to unload the library xenomai2loader.so: %s\n", dlerror());
+                }
+                mod_handle = NULL;
                 return;
             }
             do_load_constructor();
@@ -156,6 +161,10 @@ static void lib_fini(void)
     if (mod_handle != NULL && do_load_destructor != NULL)
     {
         do_load_destructor();
+        if (dlclose(mod_handle))
+        {
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: XENOMAI2 flavour module: Unable to unload the library xenomai2loader.so: %s\n", dlerror());
+        }
         return;
     }
     // We are not reporting RTAPI_MSG_ERR here as the situation can happen when machinekit-flavor-xenomai2
