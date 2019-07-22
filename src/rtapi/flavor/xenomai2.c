@@ -27,6 +27,8 @@
 
 
 #include <dlfcn.h>
+#include <dirent.h>
+#include <stdio.h>
 
 #include "rtapi_flavor.h"
 
@@ -76,6 +78,7 @@ static int xenomai_gid()
 {
     FILE *fd;
     int gid = -1;
+    int fd = -1;
 
     if ((fd = fopen(XENO_GID_SYSFS, "r")) != NULL)
     {
