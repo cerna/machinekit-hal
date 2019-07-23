@@ -23,7 +23,6 @@
 *
 ********************************************************************/
 
-
 #include <fcntl.h>
 #include <gelf.h>
 #include <stdbool.h>
@@ -117,7 +116,7 @@ bool test_file_for_module_data(const char *real_path, const char *module_section
         goto end;
     }
 
-    fd = open(real_path, O_RDONLY);
+    fd = open(real_path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
     if (fd < 0)
     {
         //Error when opening occured, we do not care why, just return false
