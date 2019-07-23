@@ -162,7 +162,7 @@ static void lib_init(void)
             // Load the xenomai_loader.so module that does the real work
             // Both libraries (xenomai2.so and xenomai2loader.so) are tightly coupled and for
             // security reasons cannot be in two different places
-            mod_handle = dlopen("./xenomai2loader.so", RTLD_GLOBAL | RTLD_NOW);
+            mod_handle = dlopen("./xenomai2loader.so", RTLD_LOCAL | RTLD_NOW);
             if (!mod_handle)
             {
                 rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: XENOMAI2 flavour module: Unable to load xenomai2loader.so: %s\n", dlerror());
