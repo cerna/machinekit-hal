@@ -70,8 +70,6 @@ int for_each_node(const char *real_path, dir_found_callback directory_find, file
 /*
  * Function for parsing important values from *void blob to identify flavour module
  * The return value represents if the found library is flavour module version 1
- * ATTENTION: In case the flavor_find is called, passed pointer to *name points
- * to malloced memory and the callee is responsible for freeing
 */
 bool is_machinekit_flavor_solib_v1(const char *real_path, size_t size_of_input, void *input, flavor_module_v1_found_callback flavor_find);
 
