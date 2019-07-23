@@ -140,12 +140,12 @@ static int xenomai_flavor_check(void)
     case 1: // yes
         break;
     case 0:
-        rtapi_print_msg(RTAPI_MSG_DBG, "this user is not member of group xenomai\n");
-        rtapi_print_msg(RTAPI_MSG_DBG, "please 'sudo adduser <username>  xenomai',"
+        rtapi_print_msg(RTAPI_MSG_ERR, "this user is not member of group xenomai\n");
+        rtapi_print_msg(RTAPI_MSG_ERR, "please 'sudo adduser <username>  xenomai',"
                                        " logout and login again\n");
         break;
     default:
-        rtapi_print_msg(RTAPI_MSG_DBG, "cannot determine if this user "
+        rtapi_print_msg(RTAPI_MSG_ERR, "cannot determine if this user "
                                        "is a member of group xenomai: %s\n",
                         strerror(-retval));
         break;
