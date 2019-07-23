@@ -141,7 +141,7 @@ void unregister_flavor(flavor_descriptor_ptr descriptor_to_unregister)
 
 static bool install_flavor_solib(const char *solib_path)
 {
-    flavor_handle = dlopen(solib_path, RTLD_NOW);
+    flavor_handle = dlopen(solib_path, RTLD_NOW | RTLD_LOCAL);
     if (flavor_handle == NULL)
     {
         char *error;
@@ -152,52 +152,26 @@ static bool install_flavor_solib(const char *solib_path)
     return true;
 }
 
-static bool close_failed_library_install(void)
+bool uninstall_flavor(void)
 {
-    int retval;
-    if (flavor_handle != NULL && flavor_descriptor == NULL)
+    if (flavor_handle != NULL)
     {
+        int retval;
         retval = dlclose(flavor_handle);
         if (retval)
         {
             char *error;
             error = dlerror();
             rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: There was an error when unloading the FLAVOR LIBRARY: %s", error);
-            // We will swallow the fact that the library was not unloaded without an error
+            // We are not returning false, because if the flavor_descriptor is NULL, then all is good
         }
-        flavor_handle = NULL;
-        return true;
-    }
-    return false;
-}
-
-bool uninstall_flavor(void)
-{
-    int retval;
-    if (flavor_descriptor != NULL)
-    {
-        if (flavor_handle != NULL)
+        // Flavor solib should run it's descructor code and call unregister flavor,
+        // if the solib was not dlopened multiple times, which we definitely do not want
+        if (flavor_descriptor != NULL)
         {
-            retval = dlclose(flavor_handle);
-            if (retval)
-            {
-                char *error;
-                error = dlerror();
-                rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: There was an error when unloading the FLAVOR LIBRARY: %s", error);
-                // We are not returning false, because if the flavor_descriptor is NULL, then all is good
-            }
-            // Flavor solib should run it's descructor code and call unregister flavor,
-            // if the solib was not dlopened multiple times, which we definitely do not want
-            if (flavor_descriptor != NULL)
-            {
-                rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR library %s refused to unload", flavor_descriptor->name);
-                return false;
-            }
-            return true;
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR library %s refused to unload", flavor_descriptor->name);
+            return false;
         }
-        // Really should not happen, but if for some reason the no library is loaded and the global
-        // flavor_descriptor is not NULL, then set him to NULL
-        flavor_descriptor = NULL;
         return true;
     }
     return false;
