@@ -25,7 +25,6 @@
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ********************************************************************/
 
-
 #include <dlfcn.h>
 #include <dirent.h>
 #include <stdio.h>
@@ -66,10 +65,13 @@ static int xenomai_flavor_check(void);
 static int xenomai_can_run_flavor()
 {
     if (!kernel_is_xenomai())
+    {
         return 0;
-
-    if (!xenomai_flavor_check())
+    }
+    if (xenomai_flavor_check() != 1)
+    {
         return 0;
+    }
 
     return 1;
 }
@@ -138,16 +140,15 @@ static int xenomai_flavor_check(void)
     case 1: // yes
         break;
     case 0:
-        fprintf(stderr, "this user is not member of group xenomai\n");
-        fprintf(stderr, "please 'sudo adduser <username>  xenomai',"
-                        " logout and login again\n");
-        exit(EXIT_FAILURE);
-
+        rtapi_print_msg(RTAPI_MSG_DBG, "this user is not member of group xenomai\n");
+        rtapi_print_msg(RTAPI_MSG_DBG, "please 'sudo adduser <username>  xenomai',"
+                                       " logout and login again\n");
+        break;
     default:
-        fprintf(stderr, "cannot determine if this user "
-                        "is a member of group xenomai: %s\n",
-                strerror(-retval));
-        exit(EXIT_FAILURE);
+        rtapi_print_msg(RTAPI_MSG_DBG, "cannot determine if this user "
+                                       "is a member of group xenomai: %s\n",
+                        strerror(-retval));
+        break;
     }
     return retval;
 }

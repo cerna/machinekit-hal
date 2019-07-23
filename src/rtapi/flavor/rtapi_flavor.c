@@ -6,20 +6,12 @@
 #ifdef ULAPI
 #include "ulapi.h"
 #endif
-/*
-#ifdef RTAPI
-#include "rtapi_flavor.h"
-#include "rt-preempt.h"
-#endif
-#ifdef HAVE_XENOMAI_THREADS
-#include "xenomai.h"
-#endif*/
 
 static struct flavor_library
 {
-    char *name;
-    char *solib; //Path to the dynamic library implementing the flavor API
-    int weight;  //Weight is used also as an array index
+    const char *name;
+    const char *solib; //Path to the dynamic library implementing the flavor API
+    unsigned int weight;  //Weight is used also as an array index
     bool used;
 }
 #define flavor_library struct flavor_library
@@ -62,20 +54,7 @@ static void *flavor_handle = NULL;
 // Simpler than linked list and so-so good enough
 static flavor_library known_libraries[MAX_NUMBER_OF_FLAVORS] = {0};
 
-/*// List of flavors compiled in
-static flavor_descriptor_ptr flavor_list[] = {
-#ifdef ULAPI
-    &flavor_ulapi_descriptor,
-#endif
-#ifdef RTAPI
-    &flavor_posix_descriptor,
-    &flavor_rt_prempt_descriptor,
-#ifdef HAVE_XENOMAI_THREADS
-    &flavor_xenomai_descriptor,
-#endif
-#endif
-    NULL};
-*/
+flavor_library* flavor_library_factory(const char* name, const char* path, unsigned int weight,)
 
 // Point of contact with flavour API library
 void register_flavor(flavor_descriptor_ptr descriptor_to_register)
