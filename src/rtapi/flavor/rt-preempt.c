@@ -149,4 +149,4 @@ static void lib_fini(void)
     unregister_flavor(flavor_rt_preempt_descriptor);
 }
 
-FLAVOR_STAMP("rt-preempt", 1, 1)
+FLAVOR_STAMP("rt-preempt", 3, 1, 1)

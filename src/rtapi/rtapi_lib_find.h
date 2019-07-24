@@ -23,7 +23,6 @@
 *
 ********************************************************************/
 
-
 #ifndef RTAPI_LIB_FIND_H
 #define RTAPI_LIB_FIND_H
 
@@ -48,7 +47,7 @@ typedef bool (*file_found_callback)(const char *real_path);
 /*
  * Function callback declaration for when new flavour module of version 1 is found
 */
-typedef bool (*flavor_module_v1_found_callback)(const char *real_path, char *name, unsigned int weight);
+typedef bool (*flavor_module_v1_found_callback)(const char *real_path, char *name, unsigned int id, unsigned int weight);
 
 /*
  * Function testing for file specified as a real_path if is ELF file of ET_DYN and contains

@@ -139,9 +139,9 @@ extern "C"
 
     // Accessors for flavor_descriptor
     typedef const char *(flavor_name_t)(flavor_descriptor_ptr f);
-    //Do I need this or do I need to 
+    //Do I need this or do I need to
     //extern flavor_name_t flavor_name;
-    extern int flavor_id(flavor_descriptor_ptr f);
+    //extern int flavor_id(flavor_descriptor_ptr f);
     typedef int(flavor_feature_t)(flavor_descriptor_ptr f, int feature);
     extern flavor_feature_t flavor_feature;
 
@@ -158,6 +158,10 @@ extern "C"
  *                                  flavor_descriptor_t.name                                        //TODO: Can this be automated?
  *                                  VALUE: const char*
  * 
+ * machinekit_flavor_id =           ID of flavour library, has to be the same as id in
+ *                                  flavor_descriptor_t.flavor_id, cannot be 0                                        //TODO: Can this be automated?
+ *                                  VALUE: unsigned int
+ * 
  * machinekit_flavor_weight =       Ordering in which rtapi.so will try to load known flavour
  *                                  libraries, higher number means the library will be tried
  *                                  sooner, has sense only for automatic (default) loading
@@ -170,12 +174,14 @@ extern "C"
  * USE as FLAVOR_STAMP(evl-core, 2, 1)
  * will create memory array {unsigned int = API version, unsigned int = weight, null terminated char array = name of flavour}
  */
-#define FLAVOR_NAME_DEFINE(flavour_name) const char flavor_name[] __attribute__((section("machinekit-flavor"))) = flavour_name;
-#define FLAVOR_WEIGHT_DEFINE(flavour_weight) const unsigned int weight __attribute__((section("machinekit-flavor"))) = flavour_weight;
-#define FLAVOR_API_VERSION_DEFINE(flavour_api_version) const unsigned int api_version __attribute__((section("machinekit-flavor"))) = flavour_api_version;
-#define FLAVOR_STAMP(machinekit_flavor_name, machinekit_flavor_weight, machinekit_flavor_api_version) \
-    FLAVOR_API_VERSION_DEFINE(machinekit_flavor_api_version)                                          \
-    FLAVOR_WEIGHT_DEFINE(machinekit_flavor_weight)                                                    \
+#define FLAVOR_NAME_DEFINE(flavour_name_define) const char flavor_name[] __attribute__((section("machinekit-flavor"))) = flavour_name_define;
+#define FLAVOR_ID_DEFINE(flavour_id_define) const unsigned int flavor_id __attribute__((section("machinekit-flavor"))) = flavour_id_define;
+#define FLAVOR_WEIGHT_DEFINE(flavour_weight_define) const unsigned int flavor_weight __attribute__((section("machinekit-flavor"))) = flavour_weight_define;
+#define FLAVOR_API_VERSION_DEFINE(flavour_api_version_define) const unsigned int flavor_api_version __attribute__((section("machinekit-flavor"))) = flavour_api_version_define;
+#define FLAVOR_STAMP(machinekit_flavor_name, machinekit_flavor_id, machinekit_flavor_weight, machinekit_flavor_api_version) \
+    FLAVOR_API_VERSION_DEFINE(machinekit_flavor_api_version)                                                                \
+    FLAVOR_WEIGHT_DEFINE(machinekit_flavor_weight)                                                                          \
+    FLAVOR_ID_DEFINE(machinekit_flavor_id)                                                                                  \
     FLAVOR_NAME_DEFINE(machinekit_flavor_name)
 
 #ifdef __cplusplus

@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <dirent.h> // dir
 #include "rtapi_flavor.h"
+#include "rtapi_lib_find.h"
 #ifdef ULAPI
 #include "ulapi.h"
 #endif
@@ -12,6 +13,7 @@ static struct flavor_library
     const char *library_name;
     const char *library_path;    //Path to the dynamic library implementing the flavor API
     unsigned int library_weight; //Weight is used also as an array index
+    unsigned int library_id;
     bool library_used;
 }
 #define flavor_library struct flavor_library
@@ -56,7 +58,7 @@ static void *flavor_handle = NULL;
 static flavor_library known_libraries[MAX_NUMBER_OF_FLAVORS] = {0};
 static int free_index_known_libraries = 0;
 
-static bool flavor_library_factory(const char *name, const char *path, unsigned int weight)
+static bool flavor_library_factory(const char *path, const char *name, unsigned int id, unsigned int weight)
 {
     // We are assuming that this function will be called multiple times fot the same
     // library given possible existence of multiple symlinks, which by search function
@@ -96,6 +98,7 @@ static bool flavor_library_factory(const char *name, const char *path, unsigned 
         temp->library_name = (const char *)name_alloc;
         temp->library_path = (const char *)path_alloc;
         temp->library_weight = weight;
+        temp->library_id = id;
         temp->library_used = true;
 
         return true;
@@ -106,10 +109,11 @@ static void flavor_library_free(flavor_library *to_free)
 {
     free(to_free->library_name);
     free(to_free->library_path);
+    to_free->library_id = 0;
     to_free->library_used = false;
 }
 
-static bool free_known_libraries()
+static bool free_known_libraries(void)
 {
     if (free_index_known_libraries == 0)
     {
@@ -139,20 +143,30 @@ void unregister_flavor(flavor_descriptor_ptr descriptor_to_unregister)
     }
 }
 
+// In the end, the solib is alway dlopened on the filepath, so in every case this function
+// will be called and the call can be successful only when there is no other library dlopened
+// We are assuming that the input *solib_path is already tested as being Machinekit flavour
+// API library
 static bool install_flavor_solib(const char *solib_path)
 {
-    flavor_handle = dlopen(solib_path, RTLD_NOW | RTLD_LOCAL);
     if (flavor_handle == NULL)
     {
-        char *error;
-        error = dlerror();
-        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: Error occured when trying to load flavor: %s->%s", solib_path, error);
-        return false;
+        flavor_handle = dlopen(solib_path, RTLD_NOW | RTLD_LOCAL);
+        if (flavor_handle == NULL)
+        {
+            char *error;
+            error = dlerror();
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: Error occured when trying to load flavor: %s->%s", solib_path, error);
+            return false;
+        }
+        return true;
     }
-    return true;
+    return false;
 }
 
-bool uninstall_flavor(void)
+// The only point in addition to install_flavor_solib, where is happening the direct
+// manipulation with .so library file, all access should go directly though this functionality
+static bool uninstall_flavor_solib(void)
 {
     if (flavor_handle != NULL)
     {
@@ -163,54 +177,156 @@ bool uninstall_flavor(void)
             char *error;
             error = dlerror();
             rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: There was an error when unloading the FLAVOR LIBRARY: %s", error);
-            // We are not returning false, because if the flavor_descriptor is NULL, then all is good
+            // We are not returning false, because we are setting the flavor_handle to NULL manually
+            // (the library will unload itself on shutdown in the worst case scenario)
         }
-        // Flavor solib should run it's descructor code and call unregister flavor,
-        // if the solib was not dlopened multiple times, which we definitely do not want
-        if (flavor_descriptor != NULL)
-        {
-            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR library %s refused to unload", flavor_descriptor->name);
-            return false;
-        }
+        flavor_handle = NULL;
         return true;
     }
     return false;
 }
 
-/*static bool find_flavor_solibs(const char *directory_path)
+static bool execute_checked_uninstall_of_flavor(void)
 {
-    int retval;
-    DIR *directory;
-    struct dirent *entry;
-    directory = opendir(directory_path);
-    if (directory == NULL)
+    // We are not checking the flavor_descriptor because we are using this function both for unistall of
+    // correctly installed flavour library (FD populated) and for unload of incorrectly installed flavour
+    // library (flavor_handle populated but FD unpopulated)
+    if (uninstall_flavor_solib())
     {
-        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: Cannot open directory '%s' for lookup of available FLAVOR LIBRARIES", directory_path);
+        // FH was populated and now is unpopulated
+        // Flavor solib should run it's descructor code and call unregister flavor,
+        // if the solib was not dlopened multiple times, which we definitely do not want
+        if (flavor_descriptor != NULL)
+        {
+            //Somewhere error happened (incorrect flavour library), signal and so
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR library loader: Library '%' did not correctly unloaded flavor_descriptor.\n", flavor_descriptor->name);
+            flavor_descriptor = NULL;
+        }
+        return true;
+    }
+    // Nothing is actually installed
+    // and the flavor_descriptor is still DEFINITELLY null, it not, it's my programming fuck up
+    return false;
+}
+// +++better check the logic, it's kind of fishy+++
+static bool execute_checked_install_of_flavor(const char *path)
+{
+    if (flavor_descriptor == NULL)
+    {
+        if (install_flavor_solib(path))
+        {
+            if (flavor_descriptor == NULL)
+            {
+                // Hopefully should also check situation when developer mix the constructor
+                // and destructor
+                execute_checked_uninstall_of_flavor();
+                return false;
+            }
+            // Flavor was successfully installed and FD was registered
+            return true;
+        }
+        //Something installed but should not be installed or loading error
+        //Can library in constructor dlopen itself and hold that way reference
         return false;
     }
+    rtspi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR library loader: There is already flavour API library '%s' installed. You cannot install more than one library at a time.\n", flavor_descriptor->name);
+    return false;
+}
 
-    retval = closedir(directory);
-    if (retval)
+static bool install_flavor_by_name(const char *name)
+{
+    for (int i = 0; i < free_index_known_libraries; i++)
     {
-        char *error = errno();
-        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: Cannot close directory '%s' for lookup of available FLAVOR LIBRARIES, error: %s", directory_path, error);
+        if (strcasecmp(known_libraries[i].library_name, name) == 0)
+        {
+            return execute_checked_install_of_flavor(known_libraries[i].library_path);
+        }
     }
-    return true;
-}*/
-
-const char **known_flavors()
-{
+    return false;
 }
 
-bool install_flavor_by_name(const char *flavor_name)
+static bool LAMBDA_is_machinekit_flavor_solib_v1(const char *path, size_t size_of_input, void *input, flavor_module_v1_found_callback flavor_find)
 {
+    return is_machinekit_flavor_solib_v1(path, size_of_input, input, flavor_library_factory);
 }
 
-bool install_default_flavor(void)
+static bool LAMBDA_file_find(const char *path)
 {
+    return test_file_for_module_data(path, "machinekit-flavor", LAMBDA_is_machinekit_flavor_solib_v1);
 }
 
-//To delete
+static int search_directory_for_flavor_modules(const char *path)
+{
+    return for_each_node(path, NULL, LAMBDA_file_find);
+}
+
+static int search_mountpoint_for_flavor_modules(const char *path)
+{
+    return for_each_node(path, search_mountpoint_for_flavor_modules, LAMBDA_file_find);
+}
+
+static bool install_flavor_by_path(const char *path)
+{
+    LAMBDA_file_find(path);
+    for (int i = 0; i < free_index_known_libraries; i++)
+    {
+        if (strcmp(known_libraries[i].library_path, path) == 0)
+        {
+            return execute_checked_install_of_flavor(known_libraries[i].library_path);
+        }
+    }
+    return false;
+}
+
+static bool install_flavor_by_id(unsigned int id)
+{
+    for (int i = 0; i < free_index_known_libraries; i++)
+    {
+        if (known_libraries[i].library_id == id)
+        {
+            return execute_checked_install_of_flavor(known_libraries[i].library_path);
+        }
+    }
+    return false;
+}
+
+static void bubble_sort_known_libraries(void)
+{
+    flavor_library temporary = {0};
+    for (int i = 0; i < free_index_known_libraries - 1; i++)
+    {
+        for (int ii = i; ii < free_index_known_libraries - i - 1; ii++)
+        {
+            if (known_libraries[ii + 1].library_weight < known_libraries[ii].library_weight)
+            {
+                temporary = known_libraries[ii + 1];
+                known_libraries[ii + 1] = known_libraries[ii];
+                known_libraries[ii] = temporary;
+            }
+        }
+    }
+}
+
+static bool install_default_flavor(void)
+{
+    int i = 0;
+
+    bubble_sort_known_libraries();
+    for (; i < free_index_known_libraries; i++)
+    {
+        rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOUR library loader: Trying to install flavour library module '%s'.\n", known_libraries[i].library_name);
+        if (execute_checked_install_of_flavor(known_libraries[i].library_path))
+        {
+            rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOUR library loader: Flavour library module '%s' installed.\n", known_libraries[i].library_name);
+            return true;
+        }
+    }
+    rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR library loader: Not one flavour module could be installed (Tested %d modules). Have you installed at leas one? Maybe try to set the path directly.\n", i);
+    return false;
+}
+
+
+/*//To delete
 const char *flavor_names(flavor_descriptor_ptr **fd)
 {
     const char *name;
@@ -231,9 +347,10 @@ const char *flavor_names(flavor_descriptor_ptr **fd)
         // Not end; return name
         name = (**fd)->name;
     return name;
-}
+}*/
 
 //Probably also to delete
+/*
 flavor_descriptor_ptr flavor_byname(const char *flavorname)
 {
     flavor_descriptor_ptr *i;
@@ -243,8 +360,8 @@ flavor_descriptor_ptr flavor_byname(const char *flavorname)
             break;
     }
     return *i;
-}
-
+}*/
+/*
 //Probably also to delete
 flavor_descriptor_ptr flavor_byid(rtapi_flavor_id_t flavor_id)
 {
@@ -255,9 +372,14 @@ flavor_descriptor_ptr flavor_byid(rtapi_flavor_id_t flavor_id)
             break;
     }
     return *i;
-}
+}*/
 
-//Part of flavor loading, completely rework
+/*
+ * Here are implemented the nonstatic "public" function by which higher parts of rtapi.so program
+ * communicate with rtapi_flavor
+*/
+
+// TO REWORK!!!
 flavor_descriptor_ptr flavor_default(void)
 {
     const char *fname = getenv("FLAVOR");

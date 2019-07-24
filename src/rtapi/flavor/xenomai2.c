@@ -208,4 +208,4 @@ static void lib_fini(void)
     rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: XENOMAI2 flavour module: Cannot call the destructor, as the library xenomai2loader.so is not loaded.");
 }
 
-FLAVOR_STAMP("xenomai2", 2, 1)
+FLAVOR_STAMP("xenomai2", 4, 2, 1)
