@@ -136,7 +136,7 @@ extern "C"
         flavor_descriptor_ptr f);
     extern int flavor_task_pll_set_correction_hook(
         flavor_descriptor_ptr f, long value);
-
+/*
     // Accessors for flavor_descriptor
     typedef const char *(flavor_name_t)(flavor_descriptor_ptr f);
     //Do I need this or do I need to
@@ -144,7 +144,7 @@ extern "C"
     //extern int flavor_id(flavor_descriptor_ptr f);
     typedef int(flavor_feature_t)(flavor_descriptor_ptr f, int feature);
     extern flavor_feature_t flavor_feature;
-
+*/
     // Help for unit test mocking
     extern int flavor_mocking;
     extern int flavor_mocking_err;

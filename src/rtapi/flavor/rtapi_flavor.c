@@ -377,6 +377,7 @@ flavor_descriptor_ptr flavor_byid(rtapi_flavor_id_t flavor_id)
 /*
  * Here are implemented the nonstatic "public" function by which higher parts of rtapi.so program
  * communicate with rtapi_flavor
+ * These functions are also exported by the EXPORT_SYMBOL MACRO
 */
 
 // TO REWORK!!!
