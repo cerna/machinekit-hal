@@ -94,7 +94,7 @@ bool is_machinekit_flavor_solib_v1(const char *const real_path, size_t size_of_i
         return false;
     }
     rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI lib find: Found real library on path %s", real_path);
-    NN_DO(flavor_find, return flavor_find(real_path, name, id, weight))
+    NN_DO(flavor_find, return flavor_find(real_path, name, id, weight, cloobj))
     return false;
 }
 
@@ -107,7 +107,6 @@ struct test_file_for_module_data_cloobj
 };
 static test_file_section_discovered(const char *const elf_file_path, const char *const section_name, const size_t size_of_data, const void *const section_data, bool *continuing, void *cloobj)
 {
-
     if (strcmp(section_name, ((struct test_file_for_module_data_cloobj *)cloobj)->module_section_name) == 0)
     {
         *continuing = false;
@@ -155,11 +154,11 @@ int for_each_node(const char *const real_path, dir_found_callback directory_find
         switch (entry->d_type)
         {
         case DT_DIR:
-            NN_DO(directory_find, count += directory_find((const char *)&real_node_path))
+            NN_DO(directory_find, count += directory_find((const char *)&real_node_path, cloobj))
             break;
         case DT_LNK:
         case DT_REG:
-            NN_DO_COND(file_find, count++, file_find((const char *)&real_node_path))
+            NN_DO_COND(file_find, count++, file_find((const char *)&real_node_path, cloobj))
             break;
         // We are out of luck and have to determine type of file the more expesive way
         case DT_UNKNOWN:
@@ -171,17 +170,21 @@ int for_each_node(const char *const real_path, dir_found_callback directory_find
             }
             if (S_ISDIR(entry_stat->st_mode))
             {
-                NN_DO(directory_find, count += directory_find((const char *)&real_node_path))
+                NN_DO(directory_find, count += directory_find((const char *)&real_node_path, cloobj))
             }
             else if (S_ISREG(entry_stat->st_mode) || S_ISLNK(entry_stat->st_mode))
             {
-                NN_DO_COND(file_find, count++, file_find((const char *)&real_node_path))
+                NN_DO_COND(file_find, count++, file_find((const char *)&real_node_path, cloobj))
             }
             break;
         }
     }
 
-    closedir(folder);
+    if (closedir(folder) < 0)
+    {
+        int error = errno;
+        rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI lib find: There was an error closing folder %s: (%d)->%s", real_path, error, strerror(error));
+    }
 end:
     return count;
 }
