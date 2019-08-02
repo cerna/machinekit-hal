@@ -23,6 +23,7 @@
 
 #include "rtapi_bitops.h"
 #include <limits.h> // provides PATH_MAX
+#include <stdbool.h>
 
 // these functions must work with or without rtapi.h included
 #if !defined(SUPPORT_BEGIN_DECLS)
@@ -36,6 +37,18 @@
 #endif
 
 SUPPORT_BEGIN_DECLS
+
+/* Callback function called on each discovered ELF section in file
+ * Function has to determine by way of return value the usefulnes of operation
+ * Parameters: elf_file_path: File path of pertinent ELF file
+ *             section_name:  Name of the ELF section for which this function is called
+ *             size_of_data:  Size in chars of section payload
+ *             section_data:  Actual section payload
+ *             continuing:    Bool variable which stops traversing over more sections
+ *             cloobj:        User passed opaque object used for simulating closures
+*/
+typedef bool (*elf_section_found_callback)(const char *const elf_file_path, const char *const section_name, const size_t size_of_data, const void *const section_data, bool *continuing, void *cloobj);
+typedef bool (*shared_library_found_callback)(const char *const library_file_path, const size_t size_of_data, const void *const metadata, void *cloobj);
 
 extern long int simple_strtol(const char *nptr, char **endptr, int base);
 
@@ -88,6 +101,21 @@ const char *get_cap(const char *const fname, const char *cap);
 
 // given a module name, return the integer capability mask of tags.
 int rtapi_get_tags(const char *mod_name);
+
+/* Function used for extracting an ELF sections from file
+ * When new section is found, the section_discovered_callback_function is called with
+ * arguments of pointers to section name, size and data (directly mapped into memory
+ * and valid during call), pointer to bool continuing variable which control traversing of
+ * ELF sections and opaque cloobj for user use
+ * 
+ * Return value is set directly by section_discovered_callback_function (last call the most important)
+ * or in case file does not have ELF sections or an error occured, false is returned
+ * 
+ * Reason for implementing callback for each found ELF section is that somedoby may want
+ * to extract two or more sections from one ELF file. This way it should be possible to
+ * do so without opening the same file twice
+*/ 
+bool scan_file_for_elf_sections(const char *const elf_file_real_path, elf_section_found_callback section_discovered_callback_function, void *cloobj);
 
 
 SUPPORT_END_DECLS

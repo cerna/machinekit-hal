@@ -43,6 +43,21 @@
 #include <elf.h> // get_rpath()
 #include <link.h>
 
+#define NN_DO(val, action) \
+    do                     \
+    {                      \
+        if (val != NULL)   \
+        {                  \
+            action;        \
+        }                  \
+    } while (false);
+
+#if __ELF_NATIVE_CLASS == 32
+#define EC ELFCLASS32
+#elif __ELF_NATIVE_CLASS == 64
+#define EC ELFCLASS64
+#endif
+
 static FILE *rtapi_inifile = NULL;
 
 void check_rtapi_config_open()
@@ -178,69 +193,62 @@ const char *rtapi_get_rpath(void)
     return NULL;
 }
 
-typedef bool (*elf_section_found_callback)(const char *const elf_file_path, size_t size_of_data, void *section_data);
-// It probably could stand to separate the work of scanning the actually mapped file for wanted section
-// to separate function callback, so that user can seach arbitrary number of sections in one go
-bool scan_file_for_elf_section(const char *const elf_file_real_path, const char *section_name, elf_section_found_callback callback_function)
+bool scan_file_for_elf_sections(const char *const elf_file_real_path, elf_section_found_callback section_discovered_callback_function, void *cloobj)
 {
     int fd = -1;
-    struct stat fst;
+    struct stat fst = {0};
     void *mapping_address = NULL;
     bool retval_section_found = false;
     int retval;
 
-    fd = open(elf_file_real_path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
+    fd = open(elf_file_real_path, O_RDONLY);
     if (fd < 0)
     {
-        // ERROR
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: ELF section scrawler: There was an error when trying to open file '%s': (%d)->%s\n", elf_file_real_path, fd, strerror(fd));
         goto end;
+    }
+    // It's economic to do direct read from tested file here and determine if the file has at least
+    // ELF file magic bytes than do it after mmaping into memory
+    // Especially if we want to run this function on big set of arbitrary files
+    char tested_file_header[4];
+    if (read(fd), (void *)&tested_file_header, 4 * sizeof(char) != 4 * sizeof(char))
+    {
+        int error = errno;
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: ELF section scrawler: There was an error when trying to read 4 chars from open file '%s': (%d)->%s\n", elf_file_real_path, error, strerror(error));
+        goto close_fd;
+    }
+    if (tested_file_header[EI_MAG0] != ELFMAG0 || tested_file_header[EI_MAG1] != ELFMAG1 ||
+        tested_file_header[EI_MAG2] != ELFMAG2 || tested_file_header[EI_MAG3] != ELFMAG3)
+    {
+        // Not an ELF file
+        goto close_fd;
     }
     retval = fstat(fd, &fst);
     if (retval)
     {
         int error = errno;
-        //ERROR
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: ELF section scrawler: There was an error when trying to fstat file '%s': (%d)->%s\n", elf_file_real_path, error, strerror(error));
         goto close_fd;
     }
     mapping_address = mmap(NULL, fst.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     if (mapping_address == MAP_FAILED)
     {
         int error = errno;
-        //ERROR
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: ELF section scrawler: There was an error when trying to mmap file '%s' into memory: (%d)->%s\n", elf_file_real_path, error, strerror(error));
         goto close_fd;
     }
-    // We are goint to do few tests to determine if we have real ELF file or not (or just something that
-    // at first look looks like an ELF file before we reach any kind of loop and possibly end at segfault)
-    char *elf_file = (char *)mapping_address;
-    if (elf_file[EI_MAG0] != ELFMAG0 || elf_file[EI_MAG1] != ELFMAG1 ||
-        elf_file[EI_MAG2] != ELFMAG2 || elf_file[EI_MAG3] != ELFMAG3)
-    {
-        // Not an ELF file
-        goto close_mmap;
-    }
 
-#if __GNUC__
-#if __x86_64__ || __ppc64__ || __aarch64__ || __powerpc64__
-#define ELFEHDR Elf64_Ehdr
-#define ELFSHDR Elf64_Shdr
-#define ELFCLASS ELFCLASS64
-#elif __i386__
-#define ELFEHDR Elf32_Ehdr
-#define ELFSHDR Elf32_Shdr
-#define ELFCLASS ELFCLASS32
-#else
-#error Cannot determine if 32bit or 64bit (ELF section crawler)
-#endif
-#endif
+    char *elf_file = (char *)mapping_address;
 
     // The idea is: We are looking for libraries compiled for and runnable on this system,
     // so we are filtering on the CLASS type
-    if (elf_file[EI_CLASS] == ELFCLASS)
+    if (elf_file[EI_CLASS] == EC)
     {
-        ELFEHDR *elf_header = (ELFEHDR *)elf_file;
+        ElfW(Ehdr) *elf_header = (ElfW(Ehdr) *)elf_file;
         if (elf_header->e_version != EV_CURRENT)
         {
             // Unknown EVL version
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: ELF section scrawler: The ELF file '%s' has an unknown version of: (%d)\n", elf_file_real_path, elf_header->e_version);
             goto close_mmap;
         }
         if (elf_header->e_type != ET_DYN)
@@ -253,8 +261,8 @@ bool scan_file_for_elf_section(const char *const elf_file_real_path, const char 
             // No section header
             goto close_mmap;
         }
-        ELFSHDR *section_header_table = (ELFSHDR *)(elf_file + elf_header->e_shoff);
-        ELFSHDR *section_name_string_table = &section_header_table[elf_header->e_shstrndx];
+        ElfW(Shdr) *section_header_table = (ElfW(Shdr) *)(elf_file + elf_header->e_shoff);
+        ElfW(Shdr) *section_name_string_table = &section_header_table[elf_header->e_shstrndx];
         size_t section_size;
         // Section number could either be really 0 or just too big number
         if (elf_header->e_shnum == 0)
@@ -277,20 +285,11 @@ bool scan_file_for_elf_section(const char *const elf_file_real_path, const char 
             goto close_mmap;
         }
         char *string_table_address = (char *)(elf_file + section_name_string_table->sh_offset);
-        char *secname = NULL;
-        // Fist section should be unused
         bool continuing = true;
+        // Fist section should be unused
         for (int i = 1; (i < section_size) && continuing; i++)
         {
-            secname = string_table_address + section_header_table[i].sh_name;
-            if (strcmp(secname, section_name) == 0)
-            {
-                size_t temp_size_bytes = section_header_table[i].sh_size;
-                char data[temp_size_bytes];
-                memcpy(data, elf_file + section_header_table[i].sh_offset, temp_size_bytes);
-                NN_DO(callback_function, retval_section_found = callback_function(elf_file_real_path, temp_size_bytes, (void *)data))
-                break;
-            }
+            NN_DO(section_discovered_callback_function, retval_section_found = section_discovered_callback_function(elf_file_real_path, (const char *const)(string_table_address + section_header_table[i].sh_name), (const size_t)section_header_table[i].sh_size, (const char *const)(elf_file + section_header_table[i].sh_offset), &continuing, cloobj));
         }
     }
 
@@ -299,115 +298,64 @@ close_mmap:
     if (retval)
     {
         int error = errno;
-        //ERROR
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: ELF section scrawler: The ELF file '%s' signaled error while munmapping: (%d)\n", error, strerror(error));
     }
 close_fd:
     retval = close(fd);
     if (retval)
     {
         int error = errno;
-        //ERROR
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: ELF section scrawler: The ELF file '%s' signaled error while closing the FD: (%d)\n", error, strerror(error));
     }
 end:
     return retval_section_found;
 }
 
+/**** get_elf_section ****/
+static struct get_elf_section_cloobj
+{
+    size_t size;
+    void *data;
+    const char *secname;
+};
+static bool find_section_name_and_allocate(const char *const elf_file_path, const char *const section_name, const size_t size_of_data, const void *const section_data, bool *continuing, void *cloobj)
+{
+    struct get_elf_section_cloobj *co = (struct get_elf_section_cloobj *)cloobj;
+    if (strcmp(co->secname, section_name) == 0)
+    {
+        *continuing = false;
+        co->size = size_of_data;
+        co->data = malloc(size_of_data * sizeof(char));
+        if (co->data != NULL)
+        {
+            memcpy(co->data, section_data, size_of_data);
+            return true;
+        }
+    }
+    return false;
+}
 int get_elf_section(const char *const fname, const char *section_name, void **dest)
 {
-    int size = -1, i;
-    struct stat st;
+    char file_real_path[PATH_MAX] = {0};
+    struct get_elf_section_cloobj co = {.size = 0, .data = NULL, .secname = section_name};
+    int retval = -1;
 
-    if (stat(fname, &st) != 0)
+    if (realpath(fname, file_real_path) == NULL)
     {
-        perror("rtapi_compat.c:  get_elf_section() stat");
-        return -1;
+        int error = errno;
+        perror("rtapi_compat.c: could not resolve realpath of file %s. Error: (%d)->%s", fname, error, strerror(error));
+        goto end;
     }
-    int fd = open(fname, O_RDONLY);
-    if (fd < 0)
+    if (scan_file_for_elf_sections((const char *const) & file_real_path, find_section_name_and_allocate, &co))
     {
-        perror("rtapi_compat.c:  get_elf_section() open");
-        return fd;
-    }
-    char *p = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (p == NULL)
-    {
-        perror("rtapi_compat.c:  get_elf_section() mmap");
-        close(fd);
-        return -1;
+        *dest = co.data;
+        retval = co.size;
     }
 
-    switch (p[EI_CLASS])
-    {
-    case ELFCLASS32:
-    {
-        Elf32_Ehdr *ehdr = (Elf32_Ehdr *)p;
-        Elf32_Shdr *shdr = (Elf32_Shdr *)(p + ehdr->e_shoff);
-        int shnum = ehdr->e_shnum;
-
-        Elf32_Shdr *sh_strtab = &shdr[ehdr->e_shstrndx];
-        const char *const sh_strtab_p = p + sh_strtab->sh_offset;
-        for (i = 0; i < shnum; ++i)
-        {
-            if (strcmp(sh_strtab_p + shdr[i].sh_name, section_name) == 0)
-            {
-                size = shdr[i].sh_size;
-                if (!size)
-                    continue;
-                if (dest)
-                {
-                    *dest = malloc(size);
-                    if (*dest == NULL)
-                    {
-                        perror("rtapi_compat.c:  get_elf_section() malloc");
-                        size = -1;
-                        break;
-                    }
-                    memcpy(*dest, p + shdr[i].sh_offset, size);
-                    break;
-                }
-            }
-        }
-    }
-    break;
-
-    case ELFCLASS64:
-    {
-        Elf64_Ehdr *ehdr = (Elf64_Ehdr *)p;
-        Elf64_Shdr *shdr = (Elf64_Shdr *)(p + ehdr->e_shoff);
-        int shnum = ehdr->e_shnum;
-
-        Elf64_Shdr *sh_strtab = &shdr[ehdr->e_shstrndx];
-        const char *const sh_strtab_p = p + sh_strtab->sh_offset;
-        for (i = 0; i < shnum; ++i)
-        {
-            if (strcmp(sh_strtab_p + shdr[i].sh_name, section_name) == 0)
-            {
-                size = shdr[i].sh_size;
-                if (!size)
-                    continue;
-                if (dest)
-                {
-                    *dest = malloc(size);
-                    if (*dest == NULL)
-                    {
-                        perror("rtapi_compat.c:  get_elf_section() malloc");
-                        size = -1;
-                        break;
-                    }
-                    memcpy(*dest, p + shdr[i].sh_offset, size);
-                    break;
-                }
-            }
-        }
-    }
-    break;
-    default:
-        fprintf(stderr, "%s: Unknown ELF class %d\n", fname, p[EI_CLASS]);
-    }
-    munmap(p, st.st_size);
-    close(fd);
-    return size;
+end:
+    return retval;
 }
+/**** END get_elf_section function ****/
 
 const char **get_caps(const char *const fname)
 {
