@@ -201,7 +201,7 @@ bool scan_file_for_elf_sections(const char *const elf_file_real_path, elf_sectio
     bool retval_section_found = false;
     int retval;
 
-    fd = open(elf_file_real_path, O_RDONLY);
+    fd = open(elf_file_real_path, O_RDONLY| O_NOFOLLOW | O_NONBLOCK);
     if (fd < 0)
     {
         rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: ELF section scrawler: There was an error when trying to open file '%s': (%d)->%s\n", elf_file_real_path, fd, strerror(fd));
