@@ -252,6 +252,8 @@ static bool LAMBDA_is_machinekit_flavor_solib_v1(const char *path, size_t size_o
 
 static bool LAMBDA_file_find(const char *path)
 {
+    //Předělat na scan_file_for_elf_sections?
+    //Nebo poskládat test_file_for_module_data tak, aby používal scan_file_for_elf_sections
     return test_file_for_module_data(path, "machinekit-flavor", LAMBDA_is_machinekit_flavor_solib_v1);
 }
 

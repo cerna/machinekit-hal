@@ -24,7 +24,6 @@
 ********************************************************************/
 
 #include <fcntl.h>
-#include <gelf.h>
 #include <stdbool.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -41,6 +40,7 @@
 #include "rtapi.h"
 
 #include "rtapi_lib_find.h"
+#include "rtapi_compat.h"
 
 #define NN_DO(val, action) \
     do                     \
@@ -59,7 +59,7 @@
         })                            \
     } while (false);
 
-bool is_machinekit_flavor_solib_v1(const char *real_path, size_t size_of_input, void *input, flavor_module_v1_found_callback flavor_find)
+bool is_machinekit_flavor_solib_v1(const char *const real_path, size_t size_of_input, void *input, flavor_module_v1_found_callback flavor_find, void *cloobj)
 {
     // In this function, we are assuming and hoping that libELF will translate the payload
     int retval = 0;
@@ -98,104 +98,30 @@ bool is_machinekit_flavor_solib_v1(const char *real_path, size_t size_of_input, 
     return false;
 }
 
-bool test_file_for_module_data(const char *real_path, const char *module_section, lib_callback function_callback)
+/**** test_file_for_module_data function ****/
+struct test_file_for_module_data_cloobj
 {
-    int fd = -1;
-    bool retval = false;
-    char *section_name = NULL;
-    size_t shared_string_index = 0;
-    Elf *e = NULL;
-    GElf_Ehdr elf_header = {0};
-    GElf_Shdr section_header = {0};
-    Elf_Scn *section_descriptor = NULL;
-    Elf_Data *payload_data = NULL;
-    size_t payload_transferred_size = 0;
+    const char *module_section_name;
+    const lib_callback function_lib_callback;
+    void *saved_cloobj;
+};
+static test_file_section_discovered(const char *const elf_file_path, const char *const section_name, const size_t size_of_data, const void *const section_data, bool *continuing, void *cloobj)
+{
 
-    if (elf_version(EV_CURRENT) == EV_NONE)
+    if (strcmp(section_name, ((struct test_file_for_module_data_cloobj *)cloobj)->module_section_name) == 0)
     {
-        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI lib find: LibELF failed to initialize");
-        goto end;
+        *continuing = false;
+        NN_DO(((struct test_file_for_module_data_cloobj *)cloobj)->function_lib_callback, return ((struct test_file_for_module_data_cloobj *)cloobj)->function_lib_callback(elf_file_path, size_of_data, section_data, ((struct test_file_for_module_data_cloobj *)cloobj)->saved_cloobj));
     }
-
-    fd = open(real_path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
-    if (fd < 0)
-    {
-        //Error when opening occured, we do not care why, just return false
-        goto end;
-    }
-
-    e = elf_begin(fd, ELF_C_READ, NULL);
-    if (e == NULL)
-    {
-        goto close_fd;
-    }
-
-    if (elf_kind(e) != ELF_K_ELF)
-    {
-        // Not an ELF file, we do not care about this file
-        goto elf_end;
-    }
-
-    if (gelf_getehdr(e, &elf_header) == NULL)
-    {
-        goto elf_end;
-    }
-    // ET_DYN means shared object, which is not exactly .so shared library, but to determine
-    // shared library would be more expensive than read all sections for Machinekit related
-    // informations
-    //
-    // Basically, to determine if file is shared library or PIE executable, one needs to look
-    // for PT_INTERP in program headers, which is interpreter present in PIE executables
-    if (elf_header.e_type != ET_DYN)
-    {
-        goto elf_end;
-    }
-
-    if (elf_getshdrstrndx(e, &shared_string_index) != 0)
-    {
-        goto elf_end;
-    }
-
-    while ((section_descriptor = elf_nextscn(e, section_descriptor)) != NULL)
-    {
-        if (gelf_getshdr(section_descriptor, &section_header) != &section_header)
-        {
-            continue;
-        }
-
-        section_name = elf_strptr(e, shared_string_index, section_header.sh_name);
-        if (section_name == NULL)
-        {
-            continue;
-        }
-
-        if (strcmp(section_name, module_section) == 0)
-        {
-            // We have just found ELF object which contains the specified section, the whole
-            // purpose of this function
-            char payload[section_header.sh_size];
-
-            while (payload_transferred_size < section_header.sh_size &&
-                   (payload_data = elf_getdata(section_descriptor, payload_data)) != NULL)
-            {
-                memcpy(&payload + payload_transferred_size, payload_data->d_buf, payload_data->d_size);
-                payload_transferred_size += payload_data->d_size;
-            }
-            rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI lib find: Found possible library with ELF section %s on path %s", module_section, real_path);
-            NN_DO(function_callback, retval = function_callback(real_path, payload_transferred_size, (void *)&payload))
-            break;
-        }
-    }
-
-elf_end:
-    elf_end(e);
-close_fd:
-    close(fd);
-end:
-    return retval;
 }
+bool test_file_for_module_data(const char *const real_path, const char *module_section, lib_callback function_callback, void *cloobj)
+{
+    struct test_file_for_module_data_cloobj ca = {.module_section_name = module_section, .function_lib_callback = function_callback, .saved_cloobj = cloobj};
+    return scan_file_for_elf_sections(real_path, test_file_section_discovered, &ca);
+}
+/**** END test_file_for_module_data function *****/
 
-int for_each_node(const char *real_path, dir_found_callback directory_find, file_found_callback file_find)
+int for_each_node(const char *const real_path, dir_found_callback directory_find, file_found_callback file_find, void *cloobj)
 {
     DIR *folder = NULL;
     struct dirent *entry = NULL;
