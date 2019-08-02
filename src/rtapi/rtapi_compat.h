@@ -48,7 +48,6 @@ SUPPORT_BEGIN_DECLS
  *             cloobj:        User passed opaque object used for simulating closures
 */
 typedef bool (*elf_section_found_callback)(const char *const elf_file_path, const char *const section_name, const size_t size_of_data, const void *const section_data, bool *continuing, void *cloobj);
-typedef bool (*shared_library_found_callback)(const char *const library_file_path, const size_t size_of_data, const void *const metadata, void *cloobj);
 
 extern long int simple_strtol(const char *nptr, char **endptr, int base);
 

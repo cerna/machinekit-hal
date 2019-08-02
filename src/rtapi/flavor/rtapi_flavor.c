@@ -8,15 +8,15 @@
 #include "ulapi.h"
 #endif
 
-static struct flavor_library
+struct flavor_library
 {
     const char *library_name;
     const char *library_path;    //Path to the dynamic library implementing the flavor API
     unsigned int library_weight; //Weight is used also as an array index
     unsigned int library_id;
     bool library_used;
-}
-#define flavor_library struct flavor_library
+};
+typedef struct flavor_library flavor_library
 #define MAX_NUMBER_OF_FLAVORS 10
 
 // Help for unit test mocking
