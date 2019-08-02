@@ -201,7 +201,7 @@ bool scan_file_for_elf_sections(const char *const elf_file_real_path, elf_sectio
     bool retval_section_found = false;
     int retval;
 
-    fd = open(elf_file_real_path, O_RDONLY| O_NOFOLLOW | O_NONBLOCK);
+    fd = open(elf_file_real_path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
     if (fd < 0)
     {
         rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: ELF section scrawler: There was an error when trying to open file '%s': (%d)->%s\n", elf_file_real_path, fd, strerror(fd));
@@ -346,7 +346,7 @@ int get_elf_section(const char *const fname, const char *section_name, void **de
         perror("rtapi_compat.c: could not resolve realpath of file %s. Error: (%d)->%s", fname, error, strerror(error));
         goto end;
     }
-    if (scan_file_for_elf_sections((const char *const) & file_real_path, find_section_name_and_allocate, &co))
+    if (scan_file_for_elf_sections((const char *const)file_real_path, find_section_name_and_allocate, &co))
     {
         *dest = co.data;
         retval = co.size;
