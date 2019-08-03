@@ -19,8 +19,8 @@ struct flavor_library
 typedef struct flavor_library flavor_library
 #define MAX_NUMBER_OF_FLAVORS 10
 
-// Help for unit test mocking
-int flavor_mocking = 0;     // Signal from tests
+    // Help for unit test mocking
+    int flavor_mocking = 0; // Signal from tests
 int flavor_mocking_err = 0; // Pass error to tests
 // - Mock exit(status), returning NULL and passing error out of band
 #define EXIT_NULL(status)                \
@@ -245,29 +245,29 @@ static bool install_flavor_by_name(const char *name)
     return false;
 }
 
-static bool LAMBDA_is_machinekit_flavor_solib_v1(const char *path, size_t size_of_input, void *input, flavor_module_v1_found_callback flavor_find)
+static bool LAMBDA_is_machinekit_flavor_solib_v1(const char *const path, size_t size_of_input, void *input, flavor_module_v1_found_callback flavor_find)
 {
-    return is_machinekit_flavor_solib_v1(path, size_of_input, input, flavor_library_factory);
+    return is_machinekit_flavor_solib_v1(path, size_of_input, input, flavor_library_factory, NULL);
 }
 
-static bool LAMBDA_file_find(const char *path)
+static bool LAMBDA_file_find(const char *const path)
 {
     //Předělat na scan_file_for_elf_sections?
     //Nebo poskládat test_file_for_module_data tak, aby používal scan_file_for_elf_sections
-    return test_file_for_module_data(path, "machinekit-flavor", LAMBDA_is_machinekit_flavor_solib_v1);
+    return test_file_for_module_data(path, "machinekit-flavor", LAMBDA_is_machinekit_flavor_solib_v1, NULL);
 }
 
-static int search_directory_for_flavor_modules(const char *path)
+static int search_directory_for_flavor_modules(const char *const path)
 {
-    return for_each_node(path, NULL, LAMBDA_file_find);
+    return for_each_node(path, NULL, LAMBDA_file_find, NULL);
 }
 
-static int search_mountpoint_for_flavor_modules(const char *path)
+static int search_mountpoint_for_flavor_modules(const char *const path)
 {
-    return for_each_node(path, search_mountpoint_for_flavor_modules, LAMBDA_file_find);
+    return for_each_node(path, search_mountpoint_for_flavor_modules, LAMBDA_file_find, NULL);
 }
 
-static bool install_flavor_by_path(const char *path)
+static bool install_flavor_by_path(const char *const path)
 {
     LAMBDA_file_find(path);
     for (int i = 0; i < free_index_known_libraries; i++)
@@ -326,7 +326,6 @@ static bool install_default_flavor(void)
     rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR library loader: Not one flavour module could be installed (Tested %d modules). Have you installed at leas one? Maybe try to set the path directly.\n", i);
     return false;
 }
-
 
 /*//To delete
 const char *flavor_names(flavor_descriptor_ptr **fd)

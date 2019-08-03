@@ -790,12 +790,6 @@ PKG_CHECK_MODULES([LIBCGROUP], libcgroup,
 	USE_LIBCGROUP=yes
    ],)
 
-PKG_CHECK_MODULES([LIBELF], [libelf],
-    [
-        AC_DEFINE(HAVE_LIBELF, [], [libELF ELF manipulating library available])
-	USE_LIBELF=yes
-    ],)
-
 AC_MSG_CHECKING(whether to enable NML-using parts)
 AC_ARG_ENABLE(nml,
     [  --enable-nml      enable NML-using parts],
