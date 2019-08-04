@@ -327,6 +327,9 @@ static bool install_default_flavor(void)
     return false;
 }
 
+static int discover_default_flavor_module(void){
+    return get_paths_of_library_module("FLAVOR_LIB_DIR", search_directory_for_flavor_modules, NULL);
+}
 /*//To delete
 const char *flavor_names(flavor_descriptor_ptr **fd)
 {
@@ -381,6 +384,9 @@ flavor_descriptor_ptr flavor_byid(rtapi_flavor_id_t flavor_id)
  * These functions are also exported by the EXPORT_SYMBOL MACRO
 */
 
+int get_names_of_known_flavor_modules(void){
+
+}
 // TO REWORK!!!
 flavor_descriptor_ptr flavor_default(void)
 {

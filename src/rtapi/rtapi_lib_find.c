@@ -188,3 +188,22 @@ int for_each_node(const char *const real_path, dir_found_callback directory_find
 end:
     return count;
 }
+
+int get_paths_of_library_module(const char *settings_parameter, dir_found_callback directory_path_callback_function, void *cloobj)
+{
+    // TODO: Rework it so the string in .ini can be ';' delimited and actually call the directory_path_callback_function
+    // for each path
+    int retval = -1;
+    int count = 0;
+    char path[PATH_MAX] = {0};
+
+    retval = get_rtapi_config(path, settings_parameter, PATH_MAX);
+    if (retval)
+    {
+        // Error occured
+        goto end;
+    }
+    NN_DO(directory_path_callback_function, count += directory_path_callback_function(path, cloobj))
+end:
+    return count;
+}

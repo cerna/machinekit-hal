@@ -32,7 +32,9 @@
 // These functions must work with or without rtapi.h included
 #if !defined(SUPPORT_BEGIN_DECLS)
 #if defined(__cplusplus)
-#define SUPPORT_BEGIN_DECLS extern "C" {
+#define SUPPORT_BEGIN_DECLS \
+    extern "C"              \
+    {
 #define SUPPORT_END_DECLS }
 #else
 #define SUPPORT_BEGIN_DECLS
@@ -43,22 +45,22 @@
 /*
  * Function callback declaration for when the ELF file matching the criteria is found
 */
-typedef bool (*lib_callback)(const char *const real_path, size_t payload_size, void *payload, void* cloobj);
+typedef bool (*lib_callback)(const char *const real_path, size_t size_of_data, void *data, void *cloobj);
 
 /*
  * Function callback declaration for when new directory is found
 */
-typedef int (*dir_found_callback)(const char *const real_path, void* cloobj);
+typedef int (*dir_found_callback)(const char *const real_path, void *cloobj);
 
 /*
  * Function callback declaration for when new file is found
 */
-typedef bool (*file_found_callback)(const char *const real_path, void* cloobj);
+typedef bool (*file_found_callback)(const char *const real_path, void *cloobj);
 
 /*
  * Function callback declaration for when new flavour module of version 1 is found
 */
-typedef bool (*flavor_module_v1_found_callback)(const char *const real_path, char *name, unsigned int id, unsigned int weight, void* cloobj);
+typedef bool (*flavor_module_v1_found_callback)(const char *const real_path, char *name, unsigned int id, unsigned int weight, void *cloobj);
 
 /*
  * Function testing for file specified as a real_path if is ELF file of ET_DYN and contains
@@ -66,7 +68,7 @@ typedef bool (*flavor_module_v1_found_callback)(const char *const real_path, cha
  * If so, then function_callback is called and return value is set to true, otherwise set to
  * false
 */
-bool test_file_for_module_data(const char *const real_path, const char *module_section, lib_callback function_callback, void* cloobj);
+bool test_file_for_module_data(const char *const real_path, const char *module_section, lib_callback function_callback, void *cloobj);
 
 /*
  * Function which will find all folders and files (regular and symlinks) in given real_path
@@ -75,13 +77,19 @@ bool test_file_for_module_data(const char *const real_path, const char *module_s
  * The return value represents number of found files
 */
 
-int for_each_node(const char *const real_path, dir_found_callback directory_find, file_found_callback file_find, void* cloobj);
+int for_each_node(const char *const real_path, dir_found_callback directory_find, file_found_callback file_find, void *cloobj);
 
 /*
  * Function for parsing important values from *void blob to identify flavour module
  * The return value represents if the found library is flavour module version 1
 */
-bool is_machinekit_flavor_solib_v1(const char *const real_path, size_t size_of_input, void *input, flavor_module_v1_found_callback flavor_find, void* cloobj);
+bool is_machinekit_flavor_solib_v1(const char *const real_path, size_t size_of_input, void *input, flavor_module_v1_found_callback flavor_find, void *cloobj);
+
+/*
+ * Function for getting the PATH from rtapi.ini configuration file useful for calling search
+ * functions on them
+*/
+int get_paths_of_library_module(const char *settings_parameter, dir_found_callback directory_path_callback_function, void *cloobj);
 
 SUPPORT_END_DECLS
 

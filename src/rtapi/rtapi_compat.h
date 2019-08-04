@@ -113,6 +113,10 @@ int rtapi_get_tags(const char *mod_name);
  * Reason for implementing callback for each found ELF section is that somedoby may want
  * to extract two or more sections from one ELF file. This way it should be possible to
  * do so without opening the same file twice
+ * 
+ * Parameters: elf_file_real_path:                    File path of pertinent ELF file
+ *             section_discovered_callback_function:  Function callback which is called on each discovered ELF section
+ *             cloobj:                                User passed opaque object used for simulating closures
 */ 
 bool scan_file_for_elf_sections(const char *const elf_file_real_path, elf_section_found_callback section_discovered_callback_function, void *cloobj);
 
