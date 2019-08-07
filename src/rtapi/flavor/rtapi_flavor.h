@@ -8,7 +8,7 @@ extern "C"
 
 #include "rtapi_common.h"
 
-// Flavor features:  flavor_descriptor_t.flags bits for configuring flavor
+// Flavor features:  flavor_cold_metadata.flags bits for configuring flavor
 // - Whether iopl() needs to be called
 #define FLAVOR_DOES_IO RTAPI_BIT(0)
 // - Whether flavor has hard real-time latency
@@ -26,20 +26,19 @@ extern "C"
 #define ASSERT_SIZE_WITHIN(type, size) \
     typedef char assertion_failed_##type##_[2 * !!(sizeof(type) <= size) - 1]
 
-    // Hook type definitions for the flavor_descriptor_t struct
-    typedef void (*rtapi_exception_handler_hook_t)(
-        int type, rtapi_exception_detail_t *detail, int level);
+    // Hook type definitions for the FLAVOUR module API structs
+    typedef void (*rtapi_exception_handler_hook_t)(int type, rtapi_exception_detail_t *detail, int level);
     typedef int (*rtapi_module_init_hook_t)(void);
     typedef void (*rtapi_module_exit_hook_t)(void);
     typedef int (*rtapi_task_update_stats_hook_t)(void);
     typedef void (*rtapi_print_thread_stats_hook_t)(int task_id);
-    typedef int (*rtapi_task_new_hook_t)(task_data *task, int task_id);
-    typedef int (*rtapi_task_delete_hook_t)(task_data *task, int task_id);
-    typedef int (*rtapi_task_start_hook_t)(task_data *task, int task_id);
-    typedef int (*rtapi_task_stop_hook_t)(task_data *task, int task_id);
-    typedef int (*rtapi_task_pause_hook_t)(task_data *task, int task_id);
+    typedef int (*rtapi_task_new_hook_t)(int task_id, task_data *task);
+    typedef int (*rtapi_task_delete_hook_t)(int task_id);
+    typedef int (*rtapi_task_start_hook_t)(int task_id);
+    typedef int (*rtapi_task_stop_hook_t)(int task_id);
+    typedef int (*rtapi_task_pause_hook_t)(int task_id);
     typedef int (*rtapi_task_wait_hook_t)(const int flags);
-    typedef int (*rtapi_task_resume_hook_t)(task_data *task, int task_id);
+    typedef int (*rtapi_task_resume_hook_t)(int task_id);
     typedef void (*rtapi_delay_hook_t)(long int nsec);
     typedef long long int (*rtapi_get_time_hook_t)(void);
     typedef long long int (*rtapi_get_clocks_hook_t)(void);
@@ -47,25 +46,57 @@ extern "C"
     typedef long long (*rtapi_task_pll_get_reference_hook_t)(void);
     typedef int (*rtapi_task_pll_set_correction_hook_t)(long value);
 
-    // All flavor-specific data is represented in this struct
-    typedef struct
+    /* ========== START compile-time metadata FLAVOUR module struct ========== */
+    struct flavor_cold_metadata
     {
         // Name represents unique identifier of the flavour API shared library,
         // there cannot be two on the same system with the same name at the same moment
-        const char *name;
-        // Flavor ID represents unique identifier of the flavour API shared library,
+        const char name[MAX_FLAVOR_NAME_LEN + 1];
+        // Flavour ID represents unique identifier of the flavour API shared library,
         // there cannot be two on the same system with the same name at the same moment
-        const unsigned int flavor_id;
-        // Flavor magic represents version of the flavour API implementation and is unique
+        const unsigned int id;
+        // Flavour magic represents version of the flavour API implementation and is unique
         // only in context of given flavour
         // Use is intended for volatile flavours where changes in auxiliary API happen often
         // and to synchronize what parts of Machinekit-HAL expect of flavour with given "name/flavor_id"
         // and what this exact shared library flavour API implementation can support
         const unsigned int flavor_magic;
+        // Flavour specific flags defined at the start of this document
         const unsigned long flags;
-        const rtapi_exception_handler_hook_t exception_handler_hook;
+        // Flavour weight represents the ordering in which multiple found FLAVOUR modules
+        // on system will be tried in automatic mode to register
+        const unsigned int weight;
+        // Flavour API version number is intended as a synchronization mechanism for decouplinh
+        // or RTAPI.so shared library and FLAVOUR module shared libraries
+        // It's intend is to future-proof and now should be always 1 (look at function is_machinekit_flavor_solib_v1)
+        const unsigned int api_version;
+    };
+    typedef struct flavor_cold_metadata flavor_cold_metadata;
+    typedef flavor_cold_metadata *flavor_cold_metadata_ptr;
+    /* ========== END compile-time metadata FLAVOUR module struct ========== */
+
+    /* ========== START run-time metadata FLAVOUR module struct ========== */
+    struct flavor_hot_metadata
+    {
         const rtapi_module_init_hook_t module_init_hook;
         const rtapi_module_exit_hook_t module_exit_hook;
+    };
+    typedef struct flavor_hot_metadata flavor_hot_metadata;
+    typedef flavor_hot_metadata *flavor_hot_metadata_ptr;
+
+    /* The global flavour run-time metadata struct
+     * States:  not-NULL: means that the FLAVOUR module was successfully
+     *                    registered
+     *          NULL:     state should only happed in initialization and shut down
+     *                    phase of Machinekit 
+    */
+    extern flavor_hot_metadata_ptr flavor_module_metadata_descriptor;
+    /* ========== END run-time metadata FLAVOUR module struct ========== */
+
+    /* ========== START run-time business logic FLAVOUR module struct ========== */
+    struct flavor_runtime_business
+    {
+        const rtapi_exception_handler_hook_t exception_handler_hook;
         const rtapi_task_update_stats_hook_t task_update_stats_hook;
         const rtapi_print_thread_stats_hook_t task_print_thread_stats_hook;
         const rtapi_task_new_hook_t task_new_hook;
@@ -81,17 +112,36 @@ extern "C"
         const rtapi_task_self_hook_t task_self_hook;
         const rtapi_task_pll_get_reference_hook_t task_pll_get_reference_hook;
         const rtapi_task_pll_set_correction_hook_t task_pll_set_correction_hook;
-    } flavor_descriptor_t;
-    typedef flavor_descriptor_t *flavor_descriptor_ptr;
+    };
+    typedef struct flavor_runtime_business flavor_runtime_business;
+    typedef flavor_runtime_business *flavor_runtime_business_ptr;
 
-    // The global flavor_descriptor; points at the configured flavor
-    extern flavor_descriptor_ptr flavor_descriptor;
+    /* The global flavour run-time business logic struct
+     * States:  not-NULL: means that the FLAVOUR module was successfully
+     *                    initialized and RTAPI flavor_ operations are now possible
+     *          NULL:     signals that the flavor_module_init_hook(void) function
+     *                    was not run yet, ran with error, or the flavor_module_exit_hook 
+     *                    was already run 
+    */
+    extern flavor_runtime_business_ptr flavor_module_business_descriptor;
+    /* ========== END run-time business logic FLAVOUR module struct ========== */
 
+    /* ========== START FLAVOUR module constructor and destructor functions ========== */
     // Main point function by which new flavor module can register itself
-    extern void register_flavor(flavor_descriptor_ptr descriptor_to_register);
+    extern void register_flavor(flavor_cold_metadata_ptr descriptor_to_register);
 
     // Main point function by which registered flavor module can unregister itself
-    extern void unregister_flavor(flavor_descriptor_ptr descriptor_to_unregister);
+    extern void unregister_flavor(flavor_cold_metadata_ptr descriptor_to_unregister);
+    /* ========== END FLAVOUR module constructor and destructor functions ========== */
+
+    /* ========== START FLAVOUR module hot initialization and shutdown functions ========== */
+    // Main point function by which ready registered FLAVOUR module becomes operational
+    extern void arm_flavor(flavor_runtime_business_ptr descriptor_to_arm);
+
+    // Main point function by which operational (and registered) FLAVOUR module can 
+    // change state to hot ready
+    extern void yield_flavor(flavor_runtime_business_ptr descriptor_to_yield);
+    /* ========== END FLAVOUR module hot initialization and shutdown functions ========== */
 
     // Wrappers around flavor_descriptor
     typedef const char *(flavor_names_t)(flavor_descriptor_ptr **fd);
@@ -136,7 +186,7 @@ extern "C"
         flavor_descriptor_ptr f);
     extern int flavor_task_pll_set_correction_hook(
         flavor_descriptor_ptr f, long value);
-/*
+    /*
     // Accessors for flavor_descriptor
     typedef const char *(flavor_name_t)(flavor_descriptor_ptr f);
     //Do I need this or do I need to
