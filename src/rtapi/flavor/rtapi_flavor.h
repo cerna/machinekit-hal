@@ -205,17 +205,24 @@ extern "C"
  * Idea is to create consistent array in ELF file section "machinekit-flavor"
  * which can then be read by the libELF powered tool from RTAPI shared library module
  * 
- * machinekit_flavor_name =         Name of flavour library, has to be the same as name in
- *                                  flavor_descriptor_t.name                                        //TODO: Can this be automated?
+ * machinekit_flavor_name =         Name of flavour library, size of the name is limited to MAX_FLAVOR_NAME_LEN                                       
  *                                  VALUE: const char*
  * 
- * machinekit_flavor_id =           ID of flavour library, has to be the same as id in
- *                                  flavor_descriptor_t.flavor_id, cannot be 0                                        //TODO: Can this be automated?
+ * machinekit_flavor_id =           ID of flavour library, cannot be 0
  *                                  VALUE: unsigned int
  * 
  * machinekit_flavor_weight =       Ordering in which rtapi.so will try to load known flavour
  *                                  libraries, higher number means the library will be tried
  *                                  sooner, has sense only for automatic (default) loading
+ *                                  VALUE: unsigned integer
+ * 
+ * machinekit_flavor_magic =        Special magic number of the flavour, definition defined 
+ *                                  by flavour itself
+ *                                  Used for diferentianing of FLAVOUR modules versions when 
+ *                                  implementing same API version
+ *                                  VALUE: unsigned integer
+ * 
+ * machinekit_flavor_flags =        Combination of flags defining the properties of flavor
  *                                  VALUE: unsigned integer
  * 
  * machinekit_flavor_api_version =  RESERVED number for future changes in rtapi,
