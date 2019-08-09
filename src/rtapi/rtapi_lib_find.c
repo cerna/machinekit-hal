@@ -66,8 +66,10 @@ bool is_machinekit_flavor_solib_v1(const char *const real_path, size_t size_of_i
     unsigned int api;
     unsigned int weight;
     unsigned int id;
+    unsigned int magic;
+    unsigned int flags;
 
-    if (size_of_input < sizeof(unsigned int) * 3 + 1)
+    if (size_of_input < sizeof(unsigned int) * 5 + 1)
     {
         // We want payload which has one unsigned integer for API version number,
         // one unsigned integer for flavour weight and at least empty null
@@ -86,15 +88,19 @@ bool is_machinekit_flavor_solib_v1(const char *const real_path, size_t size_of_i
     input = input + sizeof(unsigned int);
     id = *((unsigned int *)input);
     input = input + sizeof(unsigned int);
-    char name[(size_of_input - 3 * sizeof(unsigned int))\sizeof(char)];
-    retval = snprintf(name, size_of_input - 3 * sizeof(unsigned int), "%s", (char *)input);
+    magic = *((unsigned int *)input);
+    input = input + sizeof(unsigned int);
+    flags = *((unsigned int *)input);
+    input = input + sizeof(unsigned int);
+    char name[(size_of_input - 5 * sizeof(unsigned int))\sizeof(char)];
+    retval = snprintf(name, size_of_input - 5 * sizeof(unsigned int), "%s", (char *)input);
     if (retval < 1)
     {
         rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI lib find: Found possible library with wrong name %s on path %s", name, real_path);
         return false;
     }
     rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI lib find: Found real library on path %s", real_path);
-    NN_DO(flavor_find, return flavor_find(real_path, name, id, weight, cloobj))
+    NN_DO(flavor_find, return flavor_find(real_path, name, id, weight, magic, flags, cloobj))
     return false;
 }
 

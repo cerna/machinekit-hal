@@ -60,7 +60,7 @@ typedef bool (*file_found_callback)(const char *const real_path, void *cloobj);
 /*
  * Function callback declaration for when new flavour module of version 1 is found
 */
-typedef bool (*flavor_module_v1_found_callback)(const char *const real_path, char *name, unsigned int id, unsigned int weight, void *cloobj);
+typedef bool (*flavor_module_v1_found_callback)(const char *const real_path, char *name, unsigned int id, unsigned int weight, unsigned intmagic, unsigned int flags, void *cloobj);
 
 /*
  * Function testing for file specified as a real_path if is ELF file of ET_DYN and contains
