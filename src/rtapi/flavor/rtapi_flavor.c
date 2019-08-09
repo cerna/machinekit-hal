@@ -10,10 +10,8 @@
 
 struct flavor_library
 {
-    const char *library_name;
-    const char *library_path;    //Path to the dynamic library implementing the flavor API
-    unsigned int library_weight; //Weight is used also as an array index
-    unsigned int library_id;
+    flavor_cold_metadata compile_time_metadata;
+    const char *library_path; //Path to the dynamic library implementing the flavor API
     bool library_used;
 };
 typedef struct flavor_library flavor_library
@@ -47,9 +45,11 @@ int flavor_mocking_err = 0; // Pass error to tests
             exit(status);                \
     } while (0)
 
-// Global flavor descriptor gets set after a flavor is chosen
-// TODO: Protect flavor_descriptor and export only getter function with const pointer
-flavor_descriptor_ptr flavor_descriptor = NULL;
+// Global access structure for storing pointers to control structures of currently installed
+// FLAVOUR module
+// TODO: Protect and export only getter function with const pointer
+flavor_access_structure global_flavor_access_structure = {0};
+flavor_access_structure_ptr global_flavor_access_structure_ptr = &global_flavor_access_structure;
 // Local solib handle of currently open flavor
 static void *flavor_handle = NULL;
 
@@ -58,7 +58,7 @@ static void *flavor_handle = NULL;
 static flavor_library known_libraries[MAX_NUMBER_OF_FLAVORS] = {0};
 static int free_index_known_libraries = 0;
 
-static bool flavor_library_factory(const char *path, const char *name, unsigned int id, unsigned int weight)
+static bool flavor_library_factory(const char *path, const char *name, unsigned int id, unsigned int weight, unsigned int magic, unsigned int flags)
 {
     // We are assuming that this function will be called multiple times fot the same
     // library given possible existence of multiple symlinks, which by search function
@@ -69,6 +69,7 @@ static bool flavor_library_factory(const char *path, const char *name, unsigned 
     {
         if (strcasecmp(known_libraries[i].library_name, name) == 0)
         {
+            // ReDO: Check for name and ID and then maybe path, and what about magic
             if (strcmp(known_libraries[i].library_path, path) != 0)
             {
                 rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library finder: Two libraries with same name name, but different paths were found on the system. First library '%s' on %s, second library '%s' on %s.", known_libraries[i].library_name, known_libraries[i].library_path, name, path);
@@ -78,27 +79,25 @@ static bool flavor_library_factory(const char *path, const char *name, unsigned 
             return false;
         }
 
-        char *name_alloc = strdup(name);
-        if (name_alloc == NULL)
+        flavor_library *temp = &known_libraries[free_index_known_libraries];
+        if (temp->library_used)
         {
-            int error = errno;
-            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library finder: There was an error when trying to malloc: (%d)->%s", error, strerror(error));
-            return false;
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library finder: There was an error by trying to access once created library");
         }
-        char *path_alloc = strdup(path);
+        strncpy(&(temp->compile_time_metadata.name), name, MAX_FLAVOR_NAME_LEN + 1) char *path_alloc = strdup(path);
         if (path_alloc == NULL)
         {
             int error = errno;
             rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library finder: There was an error when trying to malloc: (%d)->%s", error, strerror(error));
-            free(name_alloc);
+            *temp = {0};
             return false;
         }
-        flavor_library *temp = &known_libraries[free_index_known_libraries];
         free_index_known_libraries++;
-        temp->library_name = (const char *)name_alloc;
         temp->library_path = (const char *)path_alloc;
-        temp->library_weight = weight;
-        temp->library_id = id;
+        temp->compile_time_metadata.weight = weight;
+        temp->compile_time_metadata.id = id;
+        temp->compile_time_metadata.magic = magic;
+        temp->compile_time_metadata.flags = flags;
         temp->library_used = true;
 
         return true;
@@ -107,9 +106,8 @@ static bool flavor_library_factory(const char *path, const char *name, unsigned 
 
 static void flavor_library_free(flavor_library *to_free)
 {
-    free(to_free->library_name);
     free(to_free->library_path);
-    to_free->library_id = 0;
+    *to_free = {0};
     to_free->library_used = false;
 }
 
@@ -126,22 +124,47 @@ static bool free_known_libraries(void)
     return true;
 }
 
+/* ========== START FLAVOUR module registration and unregistration functions ========== */
 // Point of contact with flavour API library
-void register_flavor(flavor_descriptor_ptr descriptor_to_register)
+void register_flavor(flavor_cold_metadata_ptr descriptor_to_register)
 {
-    if (flavor_descriptor == NULL)
+    // TODO: Set local state flag
+    if (global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor == NULL)
     {
-        flavor_descriptor = descriptor_to_register;
+        global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor = descriptor_to_register;
     }
 }
 // Point of contact with flavour API library
-void unregister_flavor(flavor_descriptor_ptr descriptor_to_unregister)
+void unregister_flavor(flavor_cold_metadata_ptr descriptor_to_unregister)
 {
-    if (flavor_descriptor == descriptor_to_unregister)
+    // TODO: Set localstate flag
+    if (global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor == descriptor_to_unregister)
     {
-        flavor_descriptor = NULL;
+        global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor = NULL;
     }
 }
+/* ========== START FLAVOUR module registration and unregistration functions ========== */
+
+/* ========== START FLAVOUR module arming and yielding functions ========== */
+// Point of contact with flavour API library
+void arm_flavor(flavor_hot_metadata_ptr descriptor_to_arm)
+{
+    // TODO: Set local state flag
+    if (global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor == NULL)
+    {
+        global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor = descriptor_to_arm;
+    }
+}
+// Point of contact with flavour API library
+void yield_flavor(flavor_hot_metadata_ptr descriptor_to_yield)
+{
+    // TODO: Set localstate flag
+    if (global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor == descriptor_to_yield)
+    {
+        global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor = NULL;
+    }
+}
+/* ========== START FLAVOUR module arming and yielding functions ========== */
 
 // In the end, the solib is alway dlopened on the filepath, so in every case this function
 // will be called and the call can be successful only when there is no other library dlopened
@@ -327,7 +350,8 @@ static bool install_default_flavor(void)
     return false;
 }
 
-static int discover_default_flavor_module(void){
+static int discover_default_flavor_module(void)
+{
     return get_paths_of_library_module("FLAVOR_LIB_DIR", search_directory_for_flavor_modules, NULL);
 }
 /*//To delete
@@ -384,8 +408,8 @@ flavor_descriptor_ptr flavor_byid(rtapi_flavor_id_t flavor_id)
  * These functions are also exported by the EXPORT_SYMBOL MACRO
 */
 
-int get_names_of_known_flavor_modules(void){
-
+int get_names_of_known_flavor_modules(void)
+{
 }
 // TO REWORK!!!
 flavor_descriptor_ptr flavor_default(void)

@@ -84,14 +84,6 @@ extern "C"
     };
     typedef struct flavor_hot_metadata flavor_hot_metadata;
     typedef flavor_hot_metadata *flavor_hot_metadata_ptr;
-
-    /* The global flavour run-time metadata struct
-     * States:  not-NULL: means that the FLAVOUR module was successfully
-     *                    registered
-     *          NULL:     state should only happed in initialization and shut down
-     *                    phase of Machinekit 
-    */
-    extern flavor_hot_metadata_ptr flavor_module_metadata_descriptor;
     /* ========== END run-time metadata FLAVOUR module struct ========== */
 
     /* ========== START run-time business logic FLAVOUR module struct ========== */
@@ -116,15 +108,6 @@ extern "C"
     };
     typedef struct flavor_runtime_business flavor_runtime_business;
     typedef flavor_runtime_business *flavor_runtime_business_ptr;
-
-    /* The global flavour run-time business logic struct
-     * States:  not-NULL: means that the FLAVOUR module was successfully
-     *                    initialized and RTAPI flavor_ operations are now possible
-     *          NULL:     signals that the flavor_module_init_hook(void) function
-     *                    was not run yet, ran with error, or the flavor_module_exit_hook 
-     *                    was already run 
-    */
-    extern flavor_runtime_business_ptr flavor_module_business_descriptor;
     /* ========== END run-time business logic FLAVOUR module struct ========== */
 
     /* ========== START FLAVOUR module constructor and destructor functions ========== */
@@ -143,6 +126,36 @@ extern "C"
     // change state to hot ready
     extern void yield_flavor(flavor_runtime_business_ptr descriptor_to_yield);
     /* ========== END FLAVOUR module hot initialization and shutdown functions ========== */
+
+    /* ========== START FLAVOUR module global access structure ========== */
+    struct flavor_access_structure
+    {
+        flavor_cold_metadata_ptr flavor_module_cold_metadata_descriptor;
+        
+        /* The global flavour run-time metadata struct
+         * States:  not-NULL: means that the FLAVOUR module was successfully
+         *                    registered
+         *          NULL:     state should only happed in initialization and shut down
+         *                    phase of Machinekit 
+        */
+        flavor_hot_metadata_ptr flavor_module_hot_metadata_descriptor;
+
+        /* The global flavour run-time business logic struct
+         * States:  not-NULL: means that the FLAVOUR module was successfully
+         *                    initialized and RTAPI flavor_ operations are now possible
+         *          NULL:     signals that the flavor_module_init_hook(void) function
+         *                    was not run yet, ran with error, or the flavor_module_exit_hook 
+         *                    was already run 
+        */
+        flavor_runtime_business_ptr flavor_module_business_logic_descriptor;
+    };
+    typedef struct flavor_access_structure flavor_access_structure;
+    typedef flavor_access_structure *flavor_access_structure_ptr;
+
+    // These are global structures for storing pointers of configured flavour
+    extern flavor_access_structure global_flavor_access_structure;
+    extern flavor_access_structure_ptr global_flavor_access_structure_ptr;
+    /* ========== END FLAVOUR module global access structure ========== */
 
     /*// Wrappers around flavor_descriptor
     typedef const char *(flavor_names_t)(flavor_descriptor_ptr **fd);
