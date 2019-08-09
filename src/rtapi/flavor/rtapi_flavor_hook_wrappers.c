@@ -5,6 +5,13 @@
 // work.
 #include "rtapi_flavor.h"
 
+#define OPERATION_PERMITTED_IN_CURRENT_STATE()
+// Based on (so far non existing) value of state variable allow only some
+// subset of functions:
+// Allow nothing when FLAVOUR module is not registered
+// Allow only arming when FLAVOUR module is registered and not armed
+// Allow everything when FLAVOUR module registered and armed
+
 #define SET_FLAVOR_DESCRIPTOR_DEFAULT() \
     do                                  \
     {                                   \
