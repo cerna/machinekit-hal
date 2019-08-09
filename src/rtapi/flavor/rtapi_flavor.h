@@ -131,7 +131,7 @@ extern "C"
     struct flavor_access_structure
     {
         flavor_cold_metadata_ptr flavor_module_cold_metadata_descriptor;
-        
+
         /* The global flavour run-time metadata struct
          * States:  not-NULL: means that the FLAVOUR module was successfully
          *                    registered
@@ -170,36 +170,29 @@ extern "C"
     typedef void(flavor_install_t)(flavor_descriptor_ptr flavor_id);
     extern flavor_install_t flavor_install;*/
 
-    // Wrappers for functions in the flavor_descriptor_t
-    extern int flavor_exception_handler_hook(
-        flavor_descriptor_ptr f, int type, rtapi_exception_detail_t *detail,
-        int level);
-    extern int flavor_module_init_hook(flavor_descriptor_ptr f);
-    extern void flavor_module_exit_hook(flavor_descriptor_ptr f);
-    extern int flavor_task_update_stats_hook(flavor_descriptor_ptr f);
-    extern void flavor_task_print_thread_stats_hook(
-        flavor_descriptor_ptr f, int task_id);
-    extern int flavor_task_new_hook(
-        flavor_descriptor_ptr f, task_data *task, int task_id);
-    extern int flavor_task_delete_hook(
-        flavor_descriptor_ptr f, task_data *task, int task_id);
-    extern int flavor_task_start_hook(
-        flavor_descriptor_ptr f, task_data *task, int task_id);
-    extern int flavor_task_stop_hook(
-        flavor_descriptor_ptr f, task_data *task, int task_id);
-    extern int flavor_task_pause_hook(
-        flavor_descriptor_ptr f, task_data *task, int task_id);
-    extern int flavor_task_wait_hook(flavor_descriptor_ptr f, const int flags);
-    extern int flavor_task_resume_hook(
-        flavor_descriptor_ptr f, task_data *task, int task_id);
-    extern void flavor_task_delay_hook(flavor_descriptor_ptr f, long int nsec);
-    extern long long int flavor_get_time_hook(flavor_descriptor_ptr f);
-    extern long long int flavor_get_clocks_hook(flavor_descriptor_ptr f);
-    extern int flavor_task_self_hook(flavor_descriptor_ptr f);
-    extern long long flavor_task_pll_get_reference_hook(
-        flavor_descriptor_ptr f);
-    extern int flavor_task_pll_set_correction_hook(
-        flavor_descriptor_ptr f, long value);
+    /* ========== START Internal side RTAPI coupling points to FLAVOUR module ========== */
+    // Should not these be renamed to rtapi_ something as they are used as a commonaccess to functionality
+    // exported by FLAVOUR module implementation and service the RTAPI side of Machinekit
+    extern int flavor_exception_handler_hook(int type, rtapi_exception_detail_t *detail, int level);
+    extern int flavor_module_init_hook(void);
+    extern void flavor_module_exit_hook(void);
+    extern int flavor_task_update_stats_hook(void);
+    extern void flavor_task_print_thread_stats_hook(int task_id);
+    extern int flavor_task_new_hook(int task_id, task_data *task);
+    extern int flavor_task_delete_hook(int task_id);
+    extern int flavor_task_start_hook(int task_id);
+    extern int flavor_task_stop_hook(int task_id);
+    extern int flavor_task_pause_hook(int task_id);
+    extern int flavor_task_wait_hook(const int flags);
+    extern int flavor_task_resume_hook(int task_id);
+    extern void flavor_task_delay_hook(long int nsec);
+    extern long long int flavor_get_time_hook(void);
+    extern long long int flavor_get_clocks_hook(void);
+    extern int flavor_task_self_hook(void);
+    extern long long flavor_task_pll_get_reference_hook(void);
+    extern int flavor_task_pll_set_correction_hook(long value);
+    /* ========== END Internal side RTAPI coupling points to FLAVOUR module ========== */
+
     /*
     // Accessors for flavor_descriptor
     typedef const char *(flavor_name_t)(flavor_descriptor_ptr f);

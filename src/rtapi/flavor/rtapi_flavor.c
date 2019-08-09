@@ -84,7 +84,7 @@ static bool flavor_library_factory(const char *path, const char *name, unsigned 
         {
             rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library finder: There was an error by trying to access once created library");
         }
-        strncpy(&(temp->compile_time_metadata.name), name, MAX_FLAVOR_NAME_LEN + 1) char *path_alloc = strdup(path);
+        strncpy(temp->compile_time_metadata.name, name, MAX_FLAVOR_NAME_LEN + 1) char *path_alloc = strdup(path);
         if (path_alloc == NULL)
         {
             int error = errno;
