@@ -6,6 +6,7 @@ extern "C"
 {
 #endif
 
+#include <assert.h>
 #include "rtapi_common.h"
 
 // Flavor features:  flavor_cold_metadata.flags bits for configuring flavor
@@ -60,7 +61,7 @@ extern "C"
         // Use is intended for volatile flavours where changes in auxiliary API happen often
         // and to synchronize what parts of Machinekit-HAL expect of flavour with given "name/flavor_id"
         // and what this exact shared library flavour API implementation can support
-        const unsigned int flavor_magic;
+        const unsigned int magic;
         // Flavour specific flags defined at the start of this document
         const unsigned long flags;
         // Flavour weight represents the ordering in which multiple found FLAVOUR modules
@@ -138,12 +139,12 @@ extern "C"
     // Main point function by which ready registered FLAVOUR module becomes operational
     extern void arm_flavor(flavor_runtime_business_ptr descriptor_to_arm);
 
-    // Main point function by which operational (and registered) FLAVOUR module can 
+    // Main point function by which operational (and registered) FLAVOUR module can
     // change state to hot ready
     extern void yield_flavor(flavor_runtime_business_ptr descriptor_to_yield);
     /* ========== END FLAVOUR module hot initialization and shutdown functions ========== */
 
-    // Wrappers around flavor_descriptor
+    /*// Wrappers around flavor_descriptor
     typedef const char *(flavor_names_t)(flavor_descriptor_ptr **fd);
     extern flavor_names_t flavor_names;
     typedef flavor_descriptor_ptr(flavor_byname_t)(const char *flavorname);
@@ -154,7 +155,7 @@ extern "C"
     typedef int(flavor_is_configured_t)(void);
     extern flavor_is_configured_t flavor_is_configured;
     typedef void(flavor_install_t)(flavor_descriptor_ptr flavor_id);
-    extern flavor_install_t flavor_install;
+    extern flavor_install_t flavor_install;*/
 
     // Wrappers for functions in the flavor_descriptor_t
     extern int flavor_exception_handler_hook(
@@ -224,14 +225,20 @@ extern "C"
  * USE as FLAVOR_STAMP(evl-core, 2, 1)
  * will create memory array {unsigned int = API version, unsigned int = weight, null terminated char array = name of flavour}
  */
-#define FLAVOR_NAME_DEFINE(flavour_name_define) const char flavor_name[] __attribute__((section("machinekit-flavor"))) = flavour_name_define;
+#define FLAVOR_NAME_DEFINE(flavour_name_define)                                                   \
+    const char flavor_name[] __attribute__((section("machinekit-flavor"))) = flavour_name_define; \
+    static_assert((sizeof(flavor_name) / sizeof(char)) <= (MAX_FLAVOR_NAME_LEN + 1) * sizeof(char), "Flavor name is too long.");
 #define FLAVOR_ID_DEFINE(flavour_id_define) const unsigned int flavor_id __attribute__((section("machinekit-flavor"))) = flavour_id_define;
+#define FLAVOR_MAGIC_DEFINE(flavour_magic_define) const unsigned int flavor_magic __attribute__((section("machinekit-flavor"))) = flavour_magic_define;
+#define FLAVOR_FLAGS_DEFINE(flavour_magic_define) const unsigned int flavor_flags __attribute__((section("machinekit-flavor"))) = flavour_flags_define;
 #define FLAVOR_WEIGHT_DEFINE(flavour_weight_define) const unsigned int flavor_weight __attribute__((section("machinekit-flavor"))) = flavour_weight_define;
 #define FLAVOR_API_VERSION_DEFINE(flavour_api_version_define) const unsigned int flavor_api_version __attribute__((section("machinekit-flavor"))) = flavour_api_version_define;
-#define FLAVOR_STAMP(machinekit_flavor_name, machinekit_flavor_id, machinekit_flavor_weight, machinekit_flavor_api_version) \
-    FLAVOR_API_VERSION_DEFINE(machinekit_flavor_api_version)                                                                \
-    FLAVOR_WEIGHT_DEFINE(machinekit_flavor_weight)                                                                          \
-    FLAVOR_ID_DEFINE(machinekit_flavor_id)                                                                                  \
+#define FLAVOR_STAMP(machinekit_flavor_name, machinekit_flavor_id, machinekit_flavor_weight, machinekit_flavor_magic, machinekit_flavor_flags, machinekit_flavor_api_version) \
+    FLAVOR_API_VERSION_DEFINE(machinekit_flavor_api_version)                                                                                                                  \
+    FLAVOR_WEIGHT_DEFINE(machinekit_flavor_weight)                                                                                                                            \
+    FLAVOR_MAGIC_DEFINE(machinekit_flavor_magic)                                                                                                                              \
+    FLAVOR_FLAGS_DEFINE(machinekit_flavor_flags)                                                                                                                              \
+    FLAVOR_ID_DEFINE(machinekit_flavor_id)                                                                                                                                    \
     FLAVOR_NAME_DEFINE(machinekit_flavor_name)
 
 #ifdef __cplusplus
