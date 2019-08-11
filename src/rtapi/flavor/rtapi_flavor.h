@@ -27,25 +27,49 @@ extern "C"
 #define ASSERT_SIZE_WITHIN(type, size) \
     typedef char assertion_failed_##type##_[2 * !!(sizeof(type) <= size) - 1]
 
-    // Hook type definitions for the FLAVOUR module API structs
+    /* ========== START function pointer definitions for FLAVOUR module API ========== */
+    /* These function definitions comprise the integral workings of each and every FLAVOUR module
+     * in additio to the constructor and destructor functions
+     * Specific FLAVOUR module has to implement at least subset
+    */
     typedef void (*rtapi_exception_handler_hook_t)(int type, rtapi_exception_detail_t *detail, int level);
+    /* FLAVOUR module HAS TO IMPLEMENT
+     * RETURN VALUE: 
+    */
     typedef int (*rtapi_module_init_hook_t)(void);
+    /* FLAVOUR module HAS TO IMPLEMENT
+    */
     typedef void (*rtapi_module_exit_hook_t)(void);
     typedef int (*rtapi_task_update_stats_hook_t)(void);
     typedef void (*rtapi_print_thread_stats_hook_t)(int task_id);
+    /* FLAVOUR module HAS TO IMPLEMENT
+     * RETURN VALUE: 
+    */
     typedef int (*rtapi_task_new_hook_t)(int task_id, task_data *task);
+    /* FLAVOUR module HAS TO IMPLEMENT
+     * RETURN VALUE: 
+    */
     typedef int (*rtapi_task_delete_hook_t)(int task_id);
+    /* FLAVOUR module HAS TO IMPLEMENT
+     * RETURN VALUE: int
+    */
     typedef int (*rtapi_task_start_hook_t)(int task_id);
     typedef int (*rtapi_task_stop_hook_t)(int task_id);
     typedef int (*rtapi_task_pause_hook_t)(int task_id);
     typedef int (*rtapi_task_wait_hook_t)(const int flags);
     typedef int (*rtapi_task_resume_hook_t)(int task_id);
+    /* FLAVOUR module HAS TO IMPLEMENT
+    */
     typedef void (*rtapi_delay_hook_t)(long int nsec);
     typedef long long int (*rtapi_get_time_hook_t)(void);
     typedef long long int (*rtapi_get_clocks_hook_t)(void);
+    /* FLAVOUR module HAS TO IMPLEMENT
+     * RETURN VALUE: int
+    */
     typedef int (*rtapi_task_self_hook_t)(void);
     typedef long long (*rtapi_task_pll_get_reference_hook_t)(void);
     typedef int (*rtapi_task_pll_set_correction_hook_t)(long value);
+    /* ========== END function pointer definitions for FLAVOUR module API ========== */
 
     /* ========== START compile-time metadata FLAVOUR module struct ========== */
     struct flavor_cold_metadata
@@ -130,8 +154,9 @@ extern "C"
     /* ========== START FLAVOUR module global access structure ========== */
     struct flavor_access_structure
     {
+        // Use atomics type?
+        hal_u32_t state;
         flavor_cold_metadata_ptr flavor_module_cold_metadata_descriptor;
-
         /* The global flavour run-time metadata struct
          * States:  not-NULL: means that the FLAVOUR module was successfully
          *                    registered
@@ -139,7 +164,6 @@ extern "C"
          *                    phase of Machinekit 
         */
         flavor_hot_metadata_ptr flavor_module_hot_metadata_descriptor;
-
         /* The global flavour run-time business logic struct
          * States:  not-NULL: means that the FLAVOUR module was successfully
          *                    initialized and RTAPI flavor_ operations are now possible
