@@ -209,7 +209,7 @@ int get_paths_of_library_module(const char *settings_parameter, dir_found_callba
         // Error occured
         goto end;
     }
-    NN_DO(directory_path_callback_function, count += directory_path_callback_function(path, cloobj))
+    NN_DO(directory_path_callback_function, count = directory_path_callback_function(path, cloobj))
 end:
     return count;
 }

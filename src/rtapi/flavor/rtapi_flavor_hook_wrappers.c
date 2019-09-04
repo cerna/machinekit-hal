@@ -318,28 +318,34 @@ int flavor_task_pll_set_correction_hook(long value)
         return 0;*/
 }
 
-const char *flavor_name(void)
+const char *get_installed_flavor_name(void) {}
+
+unsigned int get_installed_flavor_id(void) {}
+
+int verify_installed_flavor_feature(int feature) {}
+
+/*const char *flavor_name(void)
 {
     // Reiplement in the rtapi_flavor.c
-    /*SET_FLAVOR_DESCRIPTOR_DEFAULT();
-    return f->name;*/
+    SET_FLAVOR_DESCRIPTOR_DEFAULT();
+    return f->name;
 }
 
 int flavor_id(void)
 {
     // Reiplement in the rtapi_flavor.c
-    /*SET_FLAVOR_DESCRIPTOR_DEFAULT();
-    return f->flavor_id;*/
+    SET_FLAVOR_DESCRIPTOR_DEFAULT();
+    return f->flavor_id;
 }
 
 int flavor_feature(int feature)
 {
     // Reiplement in the rtapi_flavor.c
-    /*SET_FLAVOR_DESCRIPTOR_DEFAULT();
-    return (f->flags & feature);*/
-}
+    SET_FLAVOR_DESCRIPTOR_DEFAULT();
+    return (f->flags & feature);
+}*/
 
-#ifdef RTAPI
+/*#ifdef RTAPI
 EXPORT_SYMBOL(flavor_name);
 EXPORT_SYMBOL(flavor_feature);
-#endif
+#endif*/

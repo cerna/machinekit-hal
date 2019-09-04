@@ -14,6 +14,7 @@ struct flavor_library
     const char *library_path; //Path to the dynamic library implementing the flavor API
     bool library_used;
 };
+
 typedef struct flavor_library flavor_library
 #define MAX_NUMBER_OF_FLAVORS 10
 
@@ -56,11 +57,64 @@ static void *flavor_handle = NULL;
 // Simpler than linked list and so-so good enough
 // TODO: ReDO to real linked list
 static flavor_library known_libraries[MAX_NUMBER_OF_FLAVORS] = {0};
-static int free_index_known_libraries = 0;
+static unsigned int free_index_known_libraries = 0;
+
+static inline bool check_function_pointer_validity(void *function_ptr)
+{
+    // There are not many ways how to test that the pointer is a valid function pointer
+    // for function with specific signature
+    // Pretty much the only way is to test if the pointer point to function by way of dladdr1 (which
+    // will also take care of checking if the pointer is in the loaded shared library memory space),
+    // but then it is implemented by way of ELF hackery and needs visible symbols (so no static modifier)
+    // Because of this we will only test for not NULL
+    //
+    // Pointers to better checking implementations and redoing welcome
+    return function_ptr ? true : false;
+}
+
+#define CHECK_FOR_FUNCTION(structure, function_name)               \
+    do                                                             \
+    {                                                              \
+    if (!check_function_pointer_validity(structure->function_name) \
+    {                                                         \
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library finder: Flavor '%s' defined in '%s' exports NULL %s function. This is extremely bad.\n", flavor_name, flavor_real_path, ##function_name); \
+        retval = false;                                       \
+    }                                                              \
+    } while (false);
+
+static bool is_flavor_runtime_business_valid(const char *const flavor_name, const char *const flavor_real_path, flavor_runtime_business_ptr runtime_business)
+{
+    bool retval = true;
+    CHECK_FOR_FUNCTION(runtime_business, task_new_hook)
+    CHECK_FOR_FUNCTION(runtime_business, task_delete_hook)
+    CHECK_FOR_FUNCTION(runtime_business, task_start_hook)
+    CHECK_FOR_FUNCTION(runtime_business, task_stop_hook)
+
+    CHECK_FOR_FUNCTION(runtime_business, task_delay_hook)
+    CHECK_FOR_FUNCTION(runtime_business, get_time_hook)
+    CHECK_FOR_FUNCTION(runtime_business, get_clocks_hook)
+    CHECK_FOR_FUNCTION(runtime_business, task_self_hook)
+
+    CHECK_FOR_FUNCTION(runtime_business, task_update_stats_hook)
+    CHECK_FOR_FUNCTION(runtime_business, task_print_thread_stats_hook)
+
+    CHECK_FOR_FUNCTION(runtime_business, task_pause_hook)
+    CHECK_FOR_FUNCTION(runtime_business, task_wait_hook)
+    CHECK_FOR_FUNCTION(runtime_business, task_resume_hook)
+    return retval;
+}
+
+static bool is_flavor_hot_metadata_valid(const char *const flavor_name, const char *const flavor_real_path, flavor_hot_metadata_ptr hot_metadata)
+{
+    bool retval = true;
+    CHECK_FOR_FUNCTION(hot_metadata, module_init_hook)
+    CHECK_FOR_FUNCTION(hot_metadata, module_exit_hook)
+    return retval;
+}
 
 static bool flavor_library_factory(const char *path, const char *name, unsigned int id, unsigned int weight, unsigned int magic, unsigned int flags)
 {
-    // We are assuming that this function will be called multiple times fot the same
+    // We are assuming that this function will be called multiple times for the same
     // library given possible existence of multiple symlinks, which by search function
     // will all be treated as a match
     // But the name HAS(!) TO BE unique even by case-insensitive match and is generally
@@ -69,7 +123,7 @@ static bool flavor_library_factory(const char *path, const char *name, unsigned 
     {
         if (strcasecmp(known_libraries[i].library_name, name) == 0)
         {
-            // ReDO: Check for name and ID and then maybe path, and what about magic
+            // ReDO: Check for name and ID and then maybe path, and what about magic?
             if (strcmp(known_libraries[i].library_path, path) != 0)
             {
                 rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library finder: Two libraries with same name name, but different paths were found on the system. First library '%s' on %s, second library '%s' on %s.", known_libraries[i].library_name, known_libraries[i].library_path, name, path);
@@ -143,7 +197,7 @@ void unregister_flavor(flavor_cold_metadata_ptr descriptor_to_unregister)
         global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor = NULL;
     }
 }
-/* ========== START FLAVOUR module registration and unregistration functions ========== */
+/* ========== END FLAVOUR module registration and unregistration functions ========== */
 
 /* ========== START FLAVOUR module arming and yielding functions ========== */
 // Point of contact with flavour API library
@@ -164,7 +218,7 @@ void yield_flavor(flavor_hot_metadata_ptr descriptor_to_yield)
         global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor = NULL;
     }
 }
-/* ========== START FLAVOUR module arming and yielding functions ========== */
+/* ========== END FLAVOUR module arming and yielding functions ========== */
 
 // In the end, the solib is alway dlopened on the filepath, so in every case this function
 // will be called and the call can be successful only when there is no other library dlopened
@@ -211,7 +265,7 @@ static bool uninstall_flavor_solib(void)
 
 static bool execute_checked_uninstall_of_flavor(void)
 {
-    // We are not checking the flavor_descriptor because we are using this function both for unistall of
+    // We are not checking the global_flavor_access_structure_ptr because we are using this function both for unistall of
     // correctly installed flavour library (FD populated) and for unload of incorrectly installed flavour
     // library (flavor_handle populated but FD unpopulated)
     if (uninstall_flavor_solib())
@@ -219,37 +273,49 @@ static bool execute_checked_uninstall_of_flavor(void)
         // FH was populated and now is unpopulated
         // Flavor solib should run it's descructor code and call unregister flavor,
         // if the solib was not dlopened multiple times, which we definitely do not want
-        if (flavor_descriptor != NULL)
+        if (global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor != NULL)
         {
             //Somewhere error happened (incorrect flavour library), signal and so
             rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR library loader: Library '%' did not correctly unloaded flavor_descriptor.\n", flavor_descriptor->name);
-            flavor_descriptor = NULL;
+            global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor = NULL;
         }
         return true;
     }
     // Nothing is actually installed
-    // and the flavor_descriptor is still DEFINITELLY null, it not, it's my programming fuck up
+    // and the global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor is still DEFINITELLY null, if not, it's my programming, it is fucked up
     return false;
 }
-// +++better check the logic, it's kind of fishy+++
-static bool execute_checked_install_of_flavor(const char *path)
+// +++better check the logic flow, it's kind of fishy+++
+static bool execute_checked_install_of_flavor(flavor_library *library_to_install)
 {
-    if (flavor_descriptor == NULL)
+    if (!library_to_install->library_used)
     {
-        if (install_flavor_solib(path))
+        rtapi_print_msg("RTAPI: FLAVOUR library loader: There was an error when trying to install uninitialized flavor_library object");
+        return false;
+    }
+    if (global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor == NULL)
+    {
+        if (install_flavor_solib(library_to_install->library_path))
         {
-            if (flavor_descriptor == NULL)
+            if (global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor == NULL)
             {
                 // Hopefully should also check situation when developer mix the constructor
                 // and destructor
-                execute_checked_uninstall_of_flavor();
+                (void)execute_checked_uninstall_of_flavor();
                 return false;
             }
+            // Now we need to verify the installed FLAVOUR module
+            if (!is_flavor_hot_metadata_valid(library_to_install->compile_time_metadata.name, library_to_install->library_path, global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor))
+            {
+                (void)execute_checked_uninstall_of_flavor();
+                return false;
+            }
+            global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor = library_to_install->compile_time_metadata;
             // Flavor was successfully installed and FD was registered
             return true;
         }
         //Something installed but should not be installed or loading error
-        //Can library in constructor dlopen itself and hold that way reference
+        //Can library in constructor dlopen itself and hold that way a reference?
         return false;
     }
     rtspi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR library loader: There is already flavour API library '%s' installed. You cannot install more than one library at a time.\n", flavor_descriptor->name);
@@ -260,9 +326,9 @@ static bool install_flavor_by_name(const char *name)
 {
     for (int i = 0; i < free_index_known_libraries; i++)
     {
-        if (strcasecmp(known_libraries[i].library_name, name) == 0)
+        if (strcasecmp(known_libraries[i].compile_time_metadata.name, name) == 0)
         {
-            return execute_checked_install_of_flavor(known_libraries[i].library_path);
+            return execute_checked_install_of_flavor(&(known_libraries[i]));
         }
     }
     return false;
@@ -297,7 +363,7 @@ static bool install_flavor_by_path(const char *const path)
     {
         if (strcmp(known_libraries[i].library_path, path) == 0)
         {
-            return execute_checked_install_of_flavor(known_libraries[i].library_path);
+            return execute_checked_install_of_flavor(&(known_libraries[i]));
         }
     }
     return false;
@@ -309,7 +375,7 @@ static bool install_flavor_by_id(unsigned int id)
     {
         if (known_libraries[i].library_id == id)
         {
-            return execute_checked_install_of_flavor(known_libraries[i].library_path);
+            return execute_checked_install_of_flavor(&(known_libraries[i]));;
         }
     }
     return false;
@@ -411,6 +477,8 @@ flavor_descriptor_ptr flavor_byid(rtapi_flavor_id_t flavor_id)
 int get_names_of_known_flavor_modules(void)
 {
 }
+
+int flavor_module_startup(){}
 // TO REWORK!!!
 flavor_descriptor_ptr flavor_default(void)
 {
@@ -498,6 +566,7 @@ void flavor_install(flavor_descriptor_ptr flavor)
 
 int flavor_is_configured(void)
 {
+    //rework to use states
     return flavor_descriptor != NULL;
 }
 
@@ -508,4 +577,7 @@ EXPORT_SYMBOL(flavor_byname);
 EXPORT_SYMBOL(flavor_default);
 //EXPORT_SYMBOL(flavor_install);
 EXPORT_SYMBOL(uninstall_flavor);
+EXPORT_SYMBOL(get_installed_flavor_name);
+EXPORT_SYMBOL(get_installed_flavor_id);
+EXPORT_SYMBOL(verify_installed_flavor_feature)
 #endif
