@@ -1,3 +1,28 @@
+/********************************************************************
+* Description:  rtapi_cmdline_args.c
+*               This file, 'rtapi_cmdline_args.c', implements functions
+*               used for exporting and manipulation of command line arguments
+*               passed to each application as a 'int argc, char** argv',
+*               including the process name and information shown when using
+*               the 'ps' command
+*
+* Copyright (C) 2019        Jakub Fišer <jakub DOT fiser AT erythio DOT net>
+*
+* This program is free software; you can redistribute it and/or
+* modify it under the terms of the GNU Lesser General Public
+* License as published by the Free Software Foundation; either
+* version 2.1 of the License, or (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public
+* License along with this library; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+********************************************************************/
+
 #include <errno.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -32,11 +57,16 @@ extern char **environ;
 static int current_state_argc = -1;
 // This memory is directly owned by this block of code and should be properly dealt with
 static char **current_state_argv = NULL;
+// Usable area for command line arguments (and so for data shown in 'ps') is defined
+// as a (size_t)((char *)data_last_stake - (char *)data_first_stake + 1)
 static void *data_first_stake = NULL;
 static void *data_last_stake = NULL;
-static size_t data_usable_area = 0;
+// This counter has char as an unit
+static size_t used_data_counter = 0;
 static int envc = -1;
+// This memory is directly owned by this block of code and should be properly dealt with
 static char **new_environ = NULL;
+// This memory is directly owned by this block of code and should be properly dealt with
 static char *new_environ_space = NULL;
 bool init_done = false;
 
@@ -45,8 +75,8 @@ bool init_done = false;
  * Then we will create new memory space for the ENVIRONMENT and shift data there.
  * In the end we resize the ARGV memory space to encompass the original ENVIRONMENT
  * space and tell kernel about all this
-*/ 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)
+*/
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 18, 0)
 int cmdline_args_init(int argc, char **argv)
 {
     int fd_stat = -1;
@@ -73,7 +103,9 @@ int cmdline_args_init(int argc, char **argv)
     if (init_done)
     {
         // Nothing to do, the function can be called only once
-        goto error_init_already_done;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT already done\n");
+        errno = ENOENT;
+        goto error_end;
     }
     // We are signaling that no one else should be able to go over this line
     // On error the 'init_done' will be set back to false
@@ -81,23 +113,29 @@ int cmdline_args_init(int argc, char **argv)
     // Test if we are called from the main thread
     if (getpid() != GETTID())
     {
-        goto error_not_called_from_main_thread;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT has to be run from the main thread. RUN from tid: %d, pid: %d\n", GETTID(), getpid());
+        errno = EACCES;
+        goto error_end;
     }
 
     fd_stat = open("/proc/self/stat", O_RDONLY);
     if (fd_stat < 0)
     {
-        goto error_open_stat;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not open /proc/%d/stat\n", getpid());
+        goto error_end;
     }
     read_characters = read(fd_stat, &read_buffer, sizeof(read_buffer));
     retval = close(fd_stat);
     if (retval)
     {
-        goto error_close_stat;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not close /proc/%d/stat, fd: %d\n", getpid(), fd_stat);
+        goto error_end;
     }
     if (read_characters < 1)
     {
-        goto error_read_stat;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not read /proc/%d/stat\n", getpid());
+        errno = EINVAL;
+        goto error_end;
     }
 
     temporary_character = read_buffer;
@@ -149,18 +187,20 @@ int cmdline_args_init(int argc, char **argv)
     }
 
     data_first_stake = (void *)old_arg_start;
-    data_usable_area = (char *)old_env_end - (char *)old_arg_start;
+    used_data_counter = (char *)old_arg_end - (char *)old_arg_start + 1;
     data_last_stake = (void *)old_env_end;
 
     new_environ = (char **)malloc(sizeof(char *) * (envc + 1));
     if (!new_environ)
     {
-        goto error_malloc_environ;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory for environment vector\n");
+        goto error_end;
     }
-    new_environ_space = (char *)malloc((size_t)((char *)old_env_end - (char *)old_env_start));
+    new_environ_space = (char *)malloc((size_t)(((char *)old_env_end - (char *)old_env_start) + 1));
     if (!new_environ_space)
     {
-        goto error_environ_space;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory for new environment space\n");
+        goto error_environ_space_malloc;
     }
 
     current_state_argc = argc;
@@ -169,6 +209,7 @@ int cmdline_args_init(int argc, char **argv)
     current_state_argv = (char **)malloc((current_state_argc + 1) * sizeof(char *));
     if (!current_state_argv)
     {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory for new argument vector\n");
         goto error_argv_malloc;
     }
     for (int i = 0; i < argc; i++)
@@ -179,7 +220,7 @@ int cmdline_args_init(int argc, char **argv)
     current_state_argv[current_state_argc] = NULL;
 
     temporary_character = new_environ_space;
-    memcpy((void *)new_environ_space, (void *)old_env_start, (size_t)((char *)old_env_end - (char *)old_env_start));
+    memcpy(new_environ_space, (char *)old_env_start, (size_t)(((char *)old_env_end - (char *)old_env_start) + 1));
     for (int i = 0; i < envc; i++)
     {
         string_lenght = strlen(environ[i]) + 1;
@@ -209,56 +250,31 @@ int cmdline_args_init(int argc, char **argv)
         .exe_fd = -1,
     };
 
-    if (prctl(PR_SET_MM, PR_SET_MM_MAP, (long)&prctl_map, sizeof(prctl_map), 0) < 0)
+    if (prctl(PR_SET_MM, PR_SET_MM_MAP, (long int)&prctl_map, sizeof(prctl_map), 0) < 0)
     {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not PR_SET_MM_MAP\n");
         goto error_pr_set_mm_map;
     }
 
-    memset((char *)old_env_start, '\0', (size_t)((char *)data_last_stake - (char *)old_env_start));
+    memset((char *)old_env_start, '\0', (size_t)(((char *)data_last_stake - (char *)old_env_start) + 1));
 
     // We have reached this point and all should be good, signal initialization done
     return 0;
 
-// There are error return codes at a one place
-error_pr_set_mm_map:
-    syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not PR_SET_MM_MAP\n");
-    free(new_environ_space);
-    free(new_environ);
-    free(current_state_argv);
-    init_done = false;
-    return -errno;
-error_argv_malloc:
-    free(new_environ_space);
-error_environ_space:
-    free(new_environ);
-error_malloc_environ:
-    syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory for new environment\n");
-    init_done = false;
-    return -errno;
+// ERRORs
 error_process_stat:
     syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not process /proc/%d/stat\n", getpid());
-    init_done = false;
-    return -EINVAL;
-error_open_stat:
-    syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not open /proc/%d/stat\n", getpid());
-    init_done = false;
-    return -errno;
-error_read_stat:
-    syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not read /proc/%d/stat\n", getpid());
-    init_done = false;
-    return -EINVAL;
-error_close_stat:
-    syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not close /proc/%d/stat, fd: %d\n", getpid(), fd_stat);
+    errno = EINVAL;
+    goto error_end;
+error_pr_set_mm_map:
+    free(current_state_argv);
+error_argv_malloc:
+    free(new_environ_space);
+error_environ_space_malloc:
+    free(new_environ);
+error_end:
     init_done = false;
     return -errno;
-error_not_called_from_main_thread:
-    syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT has to be run from the main thread. RUN from tid: %d, pid: %d\n", GETTID(), getpid());
-    init_done = false;
-    return -EACCES;
-error_init_already_done:
-    syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT already done\n");
-    init_done = false;
-    return -ENOENT;
 }
 #else
 // This is only for kernel versions before 3.18
@@ -268,14 +284,15 @@ int cmdline_args_init(int argc, char **argv)
 {
     char *temporary_character = NULL;
     char *delimiter = NULL;
-    void *data_middle_stake = NULL;
     size_t string_lenght = 0;
 
     // Test if this is first run
     if (init_done)
     {
         // Nothing to do, the function can be called only once
-        goto error_init_already_done;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT already done\n");
+        errno = ENOENT;
+        goto error_end;
     }
     // We are signaling that no one else should be able to go over this line
     // On error the 'init_done' will be set back to false
@@ -283,7 +300,9 @@ int cmdline_args_init(int argc, char **argv)
     // Test if we are called from the main thread
     if (getpid() != GETTID())
     {
-        goto error_not_called_from_main_thread;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT has to be run from the main thread. RUN from tid: %d, pid: %d\n", GETTID(), getpid());
+        errno = EACCES;
+        goto error_end;
     }
 
     // Now we compute the lenght in continuous memory which strings pointed to by
@@ -297,36 +316,38 @@ int cmdline_args_init(int argc, char **argv)
     }
 
     // Now we shoul be at delimiter between argv memory space and environ space
-    if (delimiter == NULL)
+    if (delimiter == NULL || (*delimiter != '\0' && *(delimiter + 1) == '\0'))
     {
         // Should not happen
-        goto error_delimiter_null;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT discovered NULL delimiter between argv memory and environ memory\n");
+        errno = EFAULT;
+        goto error_end;
     }
-    data_middle_stake = (void *)delimiter;
+    // Now we prepare stakes for marking out the new memory
+    data_first_stake = (void *)argv[0];
+    used_data_counter = (size_t)((delimiter + 1) - (char *)data_first_stake);
 
     for (envc = 0; environ[envc] != NULL; envc++)
     {
         if (delimiter + 1 == environ[envc])
+        {
             delimiter = environ[envc] + strlen(environ[envc]);
+        }
     }
 
-    // Now we prepare stakes for marking out the new memory
-    data_first_stake = argv[0];
-    data_usable_area = delimiter - (char *)data_first_stake - 1; //Do I have to substract 1
-    data_last_stake = (void *)((char *)data_first_stake + data_usable_area);
-    printf("envc: %d\n", envc);
+    data_last_stake = (void *)delimiter;
     new_environ = (char **)malloc(sizeof(char *) * (envc + 1));
     if (!new_environ)
     {
-        goto error_malloc_environ;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory for environment vector\n");
+        goto error_end;
     }
-    printf("malloc: %ld\n", (size_t)((char *)data_last_stake - (char *)data_middle_stake));
-    new_environ_space = (char *)malloc((size_t)((char *)data_last_stake - (char *)data_middle_stake));
+    new_environ_space = (char *)malloc((size_t)(((char *)data_last_stake - (char *)data_first_stake) + 1 - used_data_counter));
     if (!new_environ_space)
     {
-        goto error_environ_space;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory for new environment space\n");
+        goto error_environ_space_malloc;
     }
-    printf("malloc: %ld\n", (size_t)((char *)data_last_stake - (char *)data_middle_stake));
 
     current_state_argc = argc;
     // We are doing this so subsequent calls to realloc when changing this pointer
@@ -334,8 +355,7 @@ int cmdline_args_init(int argc, char **argv)
     current_state_argv = (char **)malloc((current_state_argc + 1) * sizeof(char *));
     if (!current_state_argv)
     {
-        printf("fu: %d\n", 0);
-
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory for new argument vector\n");
         goto error_argv_malloc;
     }
     for (int i = 0; i < argc; i++)
@@ -346,8 +366,7 @@ int cmdline_args_init(int argc, char **argv)
     current_state_argv[current_state_argc] = NULL;
 
     temporary_character = new_environ_space;
-    memcpy((void *)new_environ_space, data_middle_stake, (size_t)((char *)data_last_stake - (char *)data_middle_stake));
-    printf("MEMCOPY: %ld\n", (size_t)((char *)data_last_stake - (char *)data_middle_stake));
+    memcpy((void *)new_environ_space, (char *)data_first_stake + used_data_counter, (size_t)((char *)data_last_stake - (char *)data_first_stake) + 1 - used_data_counter);
     for (int i = 0; i < envc; i++)
     {
         string_lenght = strlen(environ[i]) + 1;
@@ -360,48 +379,45 @@ int cmdline_args_init(int argc, char **argv)
     // Now we will tell kernel about the new memory spaces
     // This is actually not that great and should hapve checks like in systemD code:
     // https://github.com/systemd/systemd/blob/master/src/basic/process-util.c
-    // But given that it is only used for pre 3.18 kernel, well...  
+    // But given that it is only used for pre 3.18 kernel, well...
     // For msgd process, the best way it would be to check the  CAP_SYS_RESOURCE capability,
     // but that would require cap_get_proc() and -lcap shared library and as such
     // I see it as not worthy
-    if (prctl(PR_SET_MM, PR_SET_MM_ENV_END, (unsigned long int)(new_environ_space + (size_t)((char *)data_last_stake - (char *)data_middle_stake)), 0, 0) < 0)
+    if (prctl(PR_SET_MM, PR_SET_MM_ENV_START, (unsigned long int)new_environ_space, 0, 0) < 0)
     {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not PR_SET_MM_ENV_START\n");
+        goto error_pr_set_mm;
     }
-    if (prctl(PR_SET_MM, PR_SET_MM_ARG_START, (unsigned long int)new_environ_space, 0, 0) < 0)
+    if (prctl(PR_SET_MM, PR_SET_MM_ENV_END, (unsigned long int)(new_environ_space + (size_t)((char *)data_last_stake - (char *)data_first_stake + 1 - used_data_counter)), 0, 0) < 0)
     {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not PR_SET_MM_ENV_END\n");
+        goto error_pr_set_mm;
     }
     if (prctl(PR_SET_MM, PR_SET_MM_ARG_START, (unsigned long int)data_first_stake, 0, 0) < 0)
     {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not PR_SET_MM_ARG_START\n");
+        goto error_pr_set_mm;
     }
     if (prctl(PR_SET_MM, PR_SET_MM_ARG_END, (unsigned long int)data_last_stake, 0, 0) < 0)
     {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not PR_SET_MM_ARG_END\n");
+        goto error_pr_set_mm;
     }
 
-    memset(data_middle_stake, '\0', (size_t)((char *)data_last_stake - (char *)data_middle_stake));
+    memset((char *)data_first_stake + used_data_counter, '\0', (size_t)((char *)data_last_stake - (char *)data_first_stake + 1 - used_data_counter));
     // We have reached this point and all should be good, signal initialization done
     return 0;
 
-// There are error return codes at a one place
-error_delimiter_null:
-    syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT discovered NULL delimiter between argv memory and environ memory\n");
-    init_done = false;
-    return -EFAULT;
+// ERRORs
+error_pr_set_mm:
+    free(current_state_argv);
 error_argv_malloc:
     free(new_environ_space);
-error_environ_space:
+error_environ_space_malloc:
     free(new_environ);
-error_malloc_environ:
-    syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory\n");
+error_end:
     init_done = false;
     return -errno;
-error_not_called_from_main_thread:
-    syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT has to be run from the main thread. RUN from tid: %d, pid: %d\n", GETTID(), getpid());
-    init_done = false;
-    return -EACCES;
-error_init_already_done:
-    syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT already done\n");
-    init_done = false;
-    return -ENOENT;
 }
 #endif
 
@@ -419,4 +435,46 @@ void cmdline_args_exit(void)
     {
         free(new_environ_space);
     }
+}
+
+const char *const get_process_name(void)
+{
+    return (const char *const)current_state_argv[0];
+}
+
+bool set_process_name(const char *const new_name)
+{
+    size_t old_name_lenght = 100;
+    size_t new_name_lenght = 100;
+    // Test if we are called from the main thread
+    if (getpid() != GETTID())
+    {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME has to be run from the main thread. RUN from tid: %d, pid: %d\n", GETTID(), getpid());
+        return false;
+    }
+
+    // This needs rework, but to move forward I am putting it on top of STAGE TWO pile
+    new_name_lenght = strlen(new_name) + 1;
+    if (new_name_lenght > 16)
+    {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME has to be passed name shorter than 16 characters, passed name %s has %l characters\n", new_name, strlen(new_name));
+        return false;
+    }
+    old_name_lenght = strlen(get_process_name()) + 1;
+    if (new_name_lenght > old_name_lenght)
+    {
+        strncpy(current_state_argv[0], new_name, old_name_lenght - 1);
+        current_state_argv[0][old_name_lenght] = '\0';
+    }
+    else
+    {
+        strncpy(current_state_argv[0], new_name, new_name_lenght);
+        memset(&(current_state_argv[0][new_name_lenght]), '\0', old_name_lenght - new_name_lenght);
+    }
+    if (prctl(PR_SET_NAME, current_state_argv[0]) < 0)
+    {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME cannot PR_SET_NAME of process %d from %s to %s, error: %s\n", getpid(), get_process_name(), new_name, strerror(errno));
+        // We leave it here without an error
+    }
+    return true;
 }

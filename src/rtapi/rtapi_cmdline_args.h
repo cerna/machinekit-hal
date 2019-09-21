@@ -1,3 +1,26 @@
+/********************************************************************
+* Description:  rtapi_cmdline_args.h
+*               This file, 'rtapi_cmdline_args.h', defines functions
+*               used for exporting and manipulation of command line arguments
+*               passed to each application as a 'int argc, char** argv'
+*
+* Copyright (C) 2019        Jakub Fišer <jakub DOT fiser AT erythio DOT net>
+*
+* This program is free software; you can redistribute it and/or
+* modify it under the terms of the GNU Lesser General Public
+* License as published by the Free Software Foundation; either
+* version 2.1 of the License, or (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public
+* License along with this library; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+********************************************************************/
+
 #ifndef RTAPI_CMDLINE_ARGS_H
 #define RTAPI_CMDLINE_ARGS_H
 
@@ -24,7 +47,9 @@ extern "C"
     * Return value: TRUE  on successful completion
     *               FALSE on an error
     */
-    bool change_process_name(const char *const new_name);
+    bool set_process_name(const char *const new_name);
+
+    const char *const get_process_name(void);
 
 #ifdef __cplusplus
 }

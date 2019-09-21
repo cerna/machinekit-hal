@@ -81,6 +81,7 @@ using namespace google::protobuf;
 #include "hal.h"
 #include "hal_priv.h"
 #include "shmdrv.h"
+#include "rtapi_cmdline_args.h"
 
 #include "mk-backtrace.h"
 #include "setup_signals.h"
@@ -1101,39 +1102,27 @@ s_handle_timer(zloop_t *loop, int  timer_id, void *args)
 }
 
 
-static int mainloop(size_t  argc, char **argv)
+static int mainloop()
 {
     int retval;
     unsigned i;
-    static char proctitle[20];
+    static char proctitle[16];
 
     // set new process name
     snprintf(proctitle, sizeof(proctitle), "rtapi:%d",rtapi_instance_loc);
-    size_t argv0_len = strlen(argv[0]);
-    size_t procname_len = strlen(proctitle);
-    size_t max_procname_len = (argv0_len > procname_len) ?
-	(procname_len) : (argv0_len);
-
-    strncpy(argv[0], proctitle, max_procname_len);
-    memset(&argv[0][max_procname_len], '\0', argv0_len - max_procname_len);
-
-    for (i = 1; i < argc; i++)
-	memset(argv[i], '\0', strlen(argv[i]));
+    if(set_process_name(proctitle))
+    {
+        syslog_async(LOG_ERR, "%s: FATAL - failed to change name of process %s\n", get_process_name());
+	    exit(EXIT_FAILURE);
+    }
 
     backtrace_init(proctitle);
     rpath = rtapi_get_rpath();
 
-    // set this thread's name so it can be identified in ps/top as
-    // rtapi:<instance>
-    if (prctl(PR_SET_NAME, argv[0]) < 0) {
-	syslog_async(LOG_ERR,	"rtapi_app: prctl(PR_SETNAME,%s) failed: %s\n",
-	       argv[0], strerror(errno));
-    }
-
     // attach global segment which rtapi_msgd already prepared
     if ((retval = attach_global_segment()) != 0) {
 	syslog_async(LOG_ERR, "%s: FATAL - failed to attach to global segment\n",
-	       argv[0]);
+	       get_process_name());
 	exit(retval);
     }
 
@@ -1143,7 +1132,7 @@ static int mainloop(size_t  argc, char **argv)
     if ((global_data->rtapi_msgd_pid == 0) ||
 	kill(global_data->rtapi_msgd_pid, 0) != 0) {
 	syslog_async(LOG_ERR,"%s: rtapi_msgd pid invalid: %d, exiting\n",
-	       argv[0], global_data->rtapi_msgd_pid);
+	       get_process_name(), global_data->rtapi_msgd_pid);
 	exit(EXIT_FAILURE);
     }
 
@@ -1614,7 +1603,10 @@ int main(int argc, char **argv)
     } else {
 	// dont run as root XXX
     }
-    exit(mainloop(argc, argv));
+    if(!cmdline_args_init(argc, argv)){
+        exit(EXIT_FAILURE);
+    }
+    exit(mainloop());
 }
 
 // use this handler if -F/--foreground was given
