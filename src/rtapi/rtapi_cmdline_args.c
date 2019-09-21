@@ -76,7 +76,7 @@ bool init_done = false;
  * In the end we resize the ARGV memory space to encompass the original ENVIRONMENT
  * space and tell kernel about all this
 */
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(3, 18, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)
 int cmdline_args_init(int argc, char **argv)
 {
     int fd_stat = -1;
