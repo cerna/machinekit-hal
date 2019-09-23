@@ -57,11 +57,13 @@ extern char **environ;
 static int current_state_argc = -1;
 // This memory is directly owned by this block of code and should be properly dealt with
 static char **current_state_argv = NULL;
-// Usable area for command line arguments (and so for data shown in 'ps') is defined
-// as a (size_t)((char *)data_last_stake - (char *)data_first_stake + 1)
+// Usable area for command line arguments (and so for data shown in 'ps')
 static void *data_first_stake = NULL;
 static void *data_last_stake = NULL;
-// This counter has char as an unit
+// This number represents the whole space which can be used for command line argument data
+// as shown in /proc/$(pid)/cmdline file
+static size_t size_of_area_for_data = 0;
+// This counter holds a value of currently used chars
 static size_t used_data_counter = 0;
 static int envc = -1;
 // This memory is directly owned by this block of code and should be properly dealt with
@@ -187,8 +189,9 @@ int cmdline_args_init(int argc, char **argv)
     }
 
     data_first_stake = (void *)old_arg_start;
-    used_data_counter = (char *)old_arg_end - (char *)old_arg_start + 1;
+    used_data_counter = (size_t)(((char *)old_arg_end - (char *)old_arg_start) + 1);
     data_last_stake = (void *)old_env_end;
+    size_of_area_for_data = (size_t)(((char *)data_last_stake - (char *)data_first_stake) + 1);
 
     new_environ = (char **)malloc(sizeof(char *) * (envc + 1));
     if (!new_environ)
@@ -342,7 +345,7 @@ int cmdline_args_init(int argc, char **argv)
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory for environment vector\n");
         goto error_end;
     }
-    new_environ_space = (char *)malloc((size_t)(((char *)data_last_stake - (char *)data_first_stake) + 1 - used_data_counter));
+    new_environ_space = (char *)malloc((size_t)(size_of_area_for_data - used_data_counter));
     if (!new_environ_space)
     {
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory for new environment space\n");
@@ -366,7 +369,7 @@ int cmdline_args_init(int argc, char **argv)
     current_state_argv[current_state_argc] = NULL;
 
     temporary_character = new_environ_space;
-    memcpy((void *)new_environ_space, (char *)data_first_stake + used_data_counter, (size_t)((char *)data_last_stake - (char *)data_first_stake) + 1 - used_data_counter);
+    memcpy((void *)new_environ_space, (char *)data_first_stake + used_data_counter, (size_t)(size_of_area_for_data - used_data_counter);
     for (int i = 0; i < envc; i++)
     {
         string_lenght = strlen(environ[i]) + 1;
@@ -388,7 +391,7 @@ int cmdline_args_init(int argc, char **argv)
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not PR_SET_MM_ENV_START\n");
         goto error_pr_set_mm;
     }
-    if (prctl(PR_SET_MM, PR_SET_MM_ENV_END, (unsigned long int)(new_environ_space + (size_t)((char *)data_last_stake - (char *)data_first_stake + 1 - used_data_counter)), 0, 0) < 0)
+    if (prctl(PR_SET_MM, PR_SET_MM_ENV_END, (unsigned long int)(new_environ_space + (size_t)(size_of_area_for_data - used_data_counter)), 0, 0) < 0)
     {
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not PR_SET_MM_ENV_END\n");
         goto error_pr_set_mm;
@@ -404,7 +407,7 @@ int cmdline_args_init(int argc, char **argv)
         goto error_pr_set_mm;
     }
 
-    memset((char *)data_first_stake + used_data_counter, '\0', (size_t)((char *)data_last_stake - (char *)data_first_stake + 1 - used_data_counter));
+    memset((char *)data_first_stake + used_data_counter, '\0', (size_t)(size_of_area_for_data - used_data_counter));
     // We have reached this point and all should be good, signal initialization done
     return 0;
 
@@ -444,8 +447,11 @@ const char *const get_process_name(void)
 
 bool set_process_name(const char *const new_name)
 {
-    size_t old_name_lenght = 100;
     size_t new_name_lenght = 100;
+    char *temporary_space = NULL;
+    char *delimiter = NULL;
+    size_t new_used_data_counter = 0;
+
     // Test if we are called from the main thread
     if (getpid() != GETTID())
     {
@@ -453,14 +459,30 @@ bool set_process_name(const char *const new_name)
         return false;
     }
 
-    // This needs rework, but to move forward I am putting it on top of STAGE TWO pile
     new_name_lenght = strlen(new_name) + 1;
     if (new_name_lenght > 16)
     {
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME has to be passed name shorter than 16 characters, passed name %s has %l characters\n", new_name, strlen(new_name));
         return false;
     }
-    old_name_lenght = strlen(get_process_name()) + 1;
+
+    temporary_space = (char *)malloc(used_data_counter);
+    if (!temporary_space)
+    {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_SET_PROCESSNAME could not malloc memory for cmdline copy\n");
+        return false;
+    }
+    memcpy((char *)temporary_space, (char *)data_first_stake, used_data_counter);
+    memcpy((char *)data_first_stake, new_name, new_name_lenght);
+    delimiter = (char *)data_first_stake + new_name_lenght - 1;
+    for (int i = 1; i < current_state_argc; i++)
+    {
+        memcpy(delimiter, temporary_space + (size_t)((char *)data_first_stake - current_state_argv[i]), (size_t)(((char *)data_first_stake - current_state_argv[i]) + 1));
+        delimiter += (size_t)(((char*)data_first_stake - current_state_argv[i])+1);
+    }
+    memset(delimiter, '\0', (char*)data_last_stake - delimiter);
+    free(temporary_space);
+    /*old_name_lenght = strlen(get_process_name()) + 1;
     if (new_name_lenght > old_name_lenght)
     {
         strncpy(current_state_argv[0], new_name, old_name_lenght - 1);
@@ -470,7 +492,7 @@ bool set_process_name(const char *const new_name)
     {
         strncpy(current_state_argv[0], new_name, new_name_lenght);
         memset(&(current_state_argv[0][new_name_lenght]), '\0', old_name_lenght - new_name_lenght);
-    }
+    }*/
     if (prctl(PR_SET_NAME, current_state_argv[0]) < 0)
     {
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME cannot PR_SET_NAME of process %d from %s to %s, error: %s\n", getpid(), get_process_name(), new_name, strerror(errno));
