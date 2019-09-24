@@ -35,6 +35,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 #include <linux/version.h>
 
@@ -70,7 +71,11 @@ static int envc = -1;
 static char **new_environ = NULL;
 // This memory is directly owned by this block of code and should be properly dealt with
 static char *new_environ_space = NULL;
-bool init_done = false;
+static bool init_done = false;
+static bool exit_done = false;
+// This mutex protects the access to cmdline argument space between data_first_stake and data_last_stake,
+// used_data_counter, current_state_argc and current_state_argv[]
+static pthread_mutex_t cmdline_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* This function works like this: We malloc new char pointer array, which we will 
  * use as a argv in subsequent operations (like changing the title and so on)
@@ -101,13 +106,15 @@ int cmdline_args_init(int argc, char **argv)
     unsigned long int old_env_start = 0;
     unsigned long int old_env_end = 0;
 
+    errno = 0;
+
     // Test if this is first run
     if (init_done)
     {
         // Nothing to do, the function can be called only once
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT already done\n");
         errno = ENOENT;
-        goto error_end;
+        goto return_value;
     }
     // We are signaling that no one else should be able to go over this line
     // On error the 'init_done' will be set back to false
@@ -262,9 +269,8 @@ int cmdline_args_init(int argc, char **argv)
     memset((char *)old_env_start, '\0', (size_t)(((char *)data_last_stake - (char *)old_env_start) + 1));
 
     // We have reached this point and all should be good, signal initialization done
-    return 0;
+    goto return_value;
 
-// ERRORs
 error_process_stat:
     syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not process /proc/%d/stat\n", getpid());
     errno = EINVAL;
@@ -277,6 +283,7 @@ error_environ_space_malloc:
     free(new_environ);
 error_end:
     init_done = false;
+return_value:
     return -errno;
 }
 #else
@@ -289,13 +296,15 @@ int cmdline_args_init(int argc, char **argv)
     char *delimiter = NULL;
     size_t string_lenght = 0;
 
+    errno = 0;
+
     // Test if this is first run
     if (init_done)
     {
         // Nothing to do, the function can be called only once
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT already done\n");
         errno = ENOENT;
-        goto error_end;
+        goto return_value;
     }
     // We are signaling that no one else should be able to go over this line
     // On error the 'init_done' will be set back to false
@@ -339,6 +348,8 @@ int cmdline_args_init(int argc, char **argv)
     }
 
     data_last_stake = (void *)delimiter;
+    size_of_area_for_data = (size_t)(((char *)data_last_stake - (char *)data_first_stake) + 1);
+
     new_environ = (char **)malloc(sizeof(char *) * (envc + 1));
     if (!new_environ)
     {
@@ -369,7 +380,7 @@ int cmdline_args_init(int argc, char **argv)
     current_state_argv[current_state_argc] = NULL;
 
     temporary_character = new_environ_space;
-    memcpy((void *)new_environ_space, (char *)data_first_stake + used_data_counter, (size_t)(size_of_area_for_data - used_data_counter);
+    memcpy((void *)new_environ_space, (char *)data_first_stake + used_data_counter, (size_t)(size_of_area_for_data - used_data_counter));
     for (int i = 0; i < envc; i++)
     {
         string_lenght = strlen(environ[i]) + 1;
@@ -408,10 +419,10 @@ int cmdline_args_init(int argc, char **argv)
     }
 
     memset((char *)data_first_stake + used_data_counter, '\0', (size_t)(size_of_area_for_data - used_data_counter));
-    // We have reached this point and all should be good, signal initialization done
-    return 0;
 
-// ERRORs
+    // We have reached this point and all should be good, signal initialization done
+    goto return_value;
+
 error_pr_set_mm:
     free(current_state_argv);
 error_argv_malloc:
@@ -420,83 +431,120 @@ error_environ_space_malloc:
     free(new_environ);
 error_end:
     init_done = false;
+return_value:
     return -errno;
 }
 #endif
 
 void cmdline_args_exit(void)
 {
-    if (current_state_argv)
+    if (init_done)
     {
         free(current_state_argv);
-    }
-    if (new_environ)
-    {
         free(new_environ);
-    }
-    if (new_environ_space)
-    {
         free(new_environ_space);
     }
+
+    exit_done = true;
 }
 
 const char *const get_process_name(void)
 {
+    if (!init_done || exit_done)
+    {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS GET_PROCESS_NAME has been called before initialization or after exit\n");
+        return NULL;
+    }
+
     return (const char *const)current_state_argv[0];
 }
 
 bool set_process_name(const char *const new_name)
 {
     size_t new_name_lenght = 100;
+    size_t delta = 0;
+    size_t previous_used_data_counter = 0;
     char *temporary_space = NULL;
     char *delimiter = NULL;
-    size_t new_used_data_counter = 0;
+    bool retval = false;
 
     // Test if we are called from the main thread
     if (getpid() != GETTID())
     {
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME has to be run from the main thread. RUN from tid: %d, pid: %d\n", GETTID(), getpid());
-        return false;
+        goto end;
+    }
+
+    // Test if we are called after initialization and before exit
+    if (!init_done)
+    {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME has to be called after initialization (call to cmdline_args_init) of process %s with PID %d\n", get_process_name(), getpid());
+        goto end;
+    }
+    if (exit_done)
+    {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME has to be called before exit (call to cmdline_args_exit) of process %s with PID %d\n", get_process_name(), getpid());
+        goto end;
     }
 
     new_name_lenght = strlen(new_name) + 1;
     if (new_name_lenght > 16)
     {
-        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME has to be passed name shorter than 16 characters, passed name %s has %l characters\n", new_name, strlen(new_name));
-        return false;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME has to be passed name shorter than 16 characters, passed name %s has %d characters\n", new_name, new_name_lenght);
+        goto end;
+    }
+
+    pthread_mutex_lock(&cmdline_mutex);
+
+    // There probably is absolutely no chance of this constraint being broken, so the check is only for a good feeling
+    if ((used_data_counter - (size_t)(strlen(get_process_name()) + 1) + new_name_lenght) > size_of_area_for_data)
+    {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME has breached the maximum size allocated for cmdline arguments of %ld with wanting to write %ld\n", size_of_area_for_data, (size_t)(used_data_counter - (size_t)(strlen(get_process_name()) + 1) + new_name_lenght));
+        goto mutex_relase;
     }
 
     temporary_space = (char *)malloc(used_data_counter);
     if (!temporary_space)
     {
-        syslog_async(LOG_ERR, "RTAPI_CMDLINE_SET_PROCESSNAME could not malloc memory for cmdline copy\n");
-        return false;
+        int error = errno;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME encountered and error (%d)-> %s when trying to allocate %ld chars for temporary_space\n", error, strerror(error), used_data_counter);
+        goto mutex_relase;
     }
-    memcpy((char *)temporary_space, (char *)data_first_stake, used_data_counter);
-    memcpy((char *)data_first_stake, new_name, new_name_lenght);
-    delimiter = (char *)data_first_stake + new_name_lenght - 1;
+
+    memcpy(temporary_space, (char *)data_first_stake, used_data_counter);
+
+    delimiter = (char *)data_first_stake;
+    strncpy(delimiter, new_name, new_name_lenght);
+    delimiter += new_name_lenght;
+
     for (int i = 1; i < current_state_argc; i++)
     {
-        memcpy(delimiter, temporary_space + (size_t)((char *)data_first_stake - current_state_argv[i]), (size_t)(((char *)data_first_stake - current_state_argv[i]) + 1));
-        delimiter += (size_t)(((char*)data_first_stake - current_state_argv[i])+1);
+        delta = strlen(temporary_space + (current_state_argv[i] - (char *)data_first_stake)) + 1;
+        memcpy(delimiter, (char *)(temporary_space + (current_state_argv[i] - (char *)data_first_stake)), delta);
+        current_state_argv[i] = delimiter;
+        delimiter += delta;
     }
-    memset(delimiter, '\0', (char*)data_last_stake - delimiter);
-    free(temporary_space);
-    /*old_name_lenght = strlen(get_process_name()) + 1;
-    if (new_name_lenght > old_name_lenght)
+
+    previous_used_data_counter = used_data_counter;
+    // We are not adding the 1 for first char as in other cases because the delimiter is actually pointing one char
+    // behind the end
+    used_data_counter = (size_t)((delimiter - (char *)data_first_stake));
+    if (previous_used_data_counter > used_data_counter)
     {
-        strncpy(current_state_argv[0], new_name, old_name_lenght - 1);
-        current_state_argv[0][old_name_lenght] = '\0';
+        memset(delimiter, '\0', previous_used_data_counter - used_data_counter);
     }
-    else
-    {
-        strncpy(current_state_argv[0], new_name, new_name_lenght);
-        memset(&(current_state_argv[0][new_name_lenght]), '\0', old_name_lenght - new_name_lenght);
-    }*/
-    if (prctl(PR_SET_NAME, current_state_argv[0]) < 0)
+
+    if (prctl(PR_SET_NAME, get_process_name()) < 0)
     {
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME cannot PR_SET_NAME of process %d from %s to %s, error: %s\n", getpid(), get_process_name(), new_name, strerror(errno));
         // We leave it here without an error
     }
-    return true;
+
+    retval = true;
+
+mutex_relase:
+    pthread_mutex_unlock(&cmdline_mutex);
+    free(temporary_space);
+end:
+    return retval;
 }
