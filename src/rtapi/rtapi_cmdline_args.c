@@ -536,7 +536,7 @@ bool set_process_name(const char *const new_name)
 
     if (pthread_setname_np(main_thread, get_process_name()))
     {
-        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME cannot change name of process %d from %s to %s\n", getpid(), get_process_name(), new_name);
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME cannot change name of process %d to %s (write to /proc/%d/task/%d/comm failed)\n", getpid(), get_process_name(), getpid(), getpid());
         // We leave it here without an error
     }
 
