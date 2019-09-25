@@ -475,13 +475,6 @@ bool set_process_name(const char *const new_name)
     char *delimiter = NULL;
     bool retval = false;
 
-    // Test if we are called from the main thread
-    if (getpid() != GETTID())
-    {
-        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME has to be run from the main thread. RUN from tid: %d, pid: %d\n", GETTID(), getpid());
-        goto end;
-    }
-
     // Test if we are called after initialization and before exit
     if (!init_done)
     {
