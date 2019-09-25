@@ -23,6 +23,10 @@
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ********************************************************************/
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <errno.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -76,6 +80,7 @@ static bool exit_done = false;
 // This mutex protects the access to cmdline argument space between data_first_stake and data_last_stake,
 // used_data_counter, current_state_argc and current_state_argv[]
 static pthread_mutex_t cmdline_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_t main_thread = {0};
 
 /* This function works like this: We malloc new char pointer array, which we will 
  * use as a argv in subsequent operations (like changing the title and so on)
@@ -126,6 +131,7 @@ int cmdline_args_init(int argc, char **argv)
         errno = EACCES;
         goto error_end;
     }
+    main_thread = pthread_self();
 
     fd_stat = open("/proc/self/stat", O_RDONLY);
     if (fd_stat < 0)
@@ -316,6 +322,7 @@ int cmdline_args_init(int argc, char **argv)
         errno = EACCES;
         goto error_end;
     }
+    main_thread = pthread_self();
 
     // Now we compute the lenght in continuous memory which strings pointed to by
     // argv take (Logic taken from Postgres open-source code: https://github.com/postgres/postgres/blob/master/src/backend/utils/misc/ps_status.c)
@@ -534,9 +541,9 @@ bool set_process_name(const char *const new_name)
         memset(delimiter, '\0', previous_used_data_counter - used_data_counter);
     }
 
-    if (prctl(PR_SET_NAME, get_process_name()) < 0)
+    if (pthread_setname_np(main_thread, get_process_name()))
     {
-        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME cannot PR_SET_NAME of process %d from %s to %s, error: %s\n", getpid(), get_process_name(), new_name, strerror(errno));
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME cannot change name of process %d from %s to %s\n", getpid(), get_process_name(), new_name);
         // We leave it here without an error
     }
 
