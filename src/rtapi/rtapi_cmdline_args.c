@@ -500,7 +500,7 @@ bool set_process_name(const char *const new_name)
     if ((used_data_counter - (size_t)(strlen(get_process_name()) + 1) + new_name_lenght) > size_of_area_for_data)
     {
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME has breached the maximum size allocated for cmdline arguments of %ld with wanting to write %ld\n", size_of_area_for_data, (size_t)(used_data_counter - (size_t)(strlen(get_process_name()) + 1) + new_name_lenght));
-        goto mutex_relase;
+        goto mutex_release;
     }
 
     temporary_space = (char *)malloc(used_data_counter);
@@ -508,7 +508,7 @@ bool set_process_name(const char *const new_name)
     {
         int error = errno;
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS SET_PROCESS_NAME encountered and error (%d)-> %s when trying to allocate %ld chars for temporary_space\n", error, strerror(error), used_data_counter);
-        goto mutex_relase;
+        goto mutex_release;
     }
 
     memcpy(temporary_space, (char *)data_first_stake, used_data_counter);
@@ -541,10 +541,84 @@ bool set_process_name(const char *const new_name)
     }
 
     retval = true;
+    free(temporary_space);
 
-mutex_relase:
+mutex_release:
     pthread_mutex_unlock(&cmdline_mutex);
+end:
+    return retval;
+}
+
+int execute_on_cmdline_copy(cmdline_data_callback cmdline_process_function, void *cloobj)
+{
+    char *temporary_space = NULL;
+    char **temporary_argv = NULL;
+    int temporary_count = 0;
+    int retval = -1;
+
+    // Test if we are called after initialization and before exit
+    if (!init_done)
+    {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS EXECUTE_ON_CMDLINE_COPY has to be called after initialization (call to cmdline_args_init) of process %s with PID %d\n", get_process_name(), getpid());
+        retval = -EPERM;
+        goto end;
+    }
+    if (exit_done)
+    {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS EXECUTE_ON_CMDLINE_COPY has to be called before exit (call to cmdline_args_exit) of process %s with PID %d\n", get_process_name(), getpid());
+        retval = -EPERM;
+        goto end;
+    }
+
+    if (!cmdline_process_function)
+    {
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS EXECUTE_ON_CMDLINE_COPY passed NULL as a cmdline_process_function\n");
+        retval = -EINVAL;
+        goto end;
+    }
+
+    pthread_mutex_lock(&cmdline_mutex);
+
+    temporary_space = (char *)malloc(used_data_counter);
+    if (!temporary_space)
+    {
+        pthread_mutex_unlock(&cmdline_mutex);
+        retval = -errno;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS EXECUTE_ON_CMDLINE_COPY encountered and error (%d)-> %s when trying to allocate %ld chars for temporary_space\n", retval, strerror(retval), used_data_counter);
+        goto end;
+    }
+    temporary_argv = (char **)malloc((current_state_argc + 1) * sizeof(char *));
+    if (!temporary_argv)
+    {
+        pthread_mutex_unlock(&cmdline_mutex);
+        retval = -errno;
+        syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS EXECUTE_ON_CMDLINE_COPY encountered and error (%d)-> %s when trying to allocate %ld chars for temporary_argv\n", retval, strerror(retval), current_state_argc * sizeof(char *));
+        goto temporary_space_free;
+    }
+    temporary_count = current_state_argc;
+
+    memcpy(temporary_space, (char *)data_first_stake, used_data_counter);
+
+    for (int i = 0; i < temporary_count; i++)
+    {
+        temporary_argv[i] = (char *)(temporary_space + (size_t)(current_state_argv[i] - (char *)data_first_stake));
+    }
+    // By definition last member of argv should be NULL
+    temporary_argv[temporary_count] = NULL;
+
+    pthread_mutex_unlock(&cmdline_mutex);
+
+    retval = cmdline_process_function(&temporary_count, temporary_argv, cloobj);
+
+    free(temporary_argv);
+temporary_space_free:
     free(temporary_space);
 end:
     return retval;
+}
+
+int execute_on_original_cmdline(cmdline_data_callback cmdline_process_function, void *cloobj)
+{
+    syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS EXECUTE_ON_ORIGINAL_CMDLINE not yet implemented\n");
+    return -ENOSYS;
 }

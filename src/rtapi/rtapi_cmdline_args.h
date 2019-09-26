@@ -29,6 +29,10 @@ extern "C"
 {
 #endif
 
+    /* Function callback declaration for operating on commandline arguments
+    */
+    typedef int (*cmdline_data_callback)(int *argc, char **argv, void *cloobj);
+
     /* Initialization of process memory used for storing command line arguments
     * This function has to be run from the main process thread and should be
     * run at the start of the program as soon as possible
@@ -50,6 +54,24 @@ extern "C"
     bool set_process_name(const char *const new_name);
 
     const char *const get_process_name(void);
+
+    /* Function for execution of cmdline_process_function on newly created copy commandline
+    *  arguments data, argument counter and argument vector
+    *  After cmdline_proces_function returns, all variables are discarded with every change made
+    * 
+    * Return value: INT return value on CMDLINE_PROCESS_FUNCTION return on successful completion
+    *               -ERROR CODE INT                                     on an error
+    */
+    int execute_on_cmdline_copy(cmdline_data_callback cmdline_process_function, void *cloobj);
+
+    /* Function for execution of cmdline_process_function on original (hot) commandline
+    *  arguments data, argument counter and argument vector
+    *  After cmdline_proces_function returns, housekeeping is done to save changes made
+    * 
+    * Return value: INT return value on CMDLINE_PROCESS_FUNCTION return on successful completion
+    *               -ERROR CODE INT                                     on an error
+    */
+    int execute_on_original_cmdline(cmdline_data_callback cmdline_process_function, void *cloobj);
 
 #ifdef __cplusplus
 }
