@@ -1,12 +1,32 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <stdlib.h> // getenv
 #include <dlfcn.h>  // dlopen
 #include <stdbool.h>
 #include <dirent.h> // dir
+#include <getopt.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <alloca.h>
+#include <inttypes.h>
+#include <limits.h>
+
 #include "rtapi_flavor.h"
 #include "rtapi_lib_find.h"
+#include "rtapi_cmdline_args.h"
 #ifdef ULAPI
 #include "ulapi.h"
 #endif
+
+extern char *optarg;
+extern int optind;
+extern int opterr;
+extern int optopt;
 
 struct flavor_library
 {
@@ -14,12 +34,12 @@ struct flavor_library
     const char *library_path; //Path to the dynamic library implementing the flavor API
     bool library_used;
 };
+typedef struct flavor_library flavor_library;
 
-typedef struct flavor_library flavor_library
 #define MAX_NUMBER_OF_FLAVORS 10
 
-    // Help for unit test mocking
-    int flavor_mocking = 0; // Signal from tests
+// Help for unit test mocking
+int flavor_mocking = 0;     // Signal from tests
 int flavor_mocking_err = 0; // Pass error to tests
 // - Mock exit(status), returning NULL and passing error out of band
 #define EXIT_NULL(status)                \
@@ -324,6 +344,7 @@ static bool execute_checked_install_of_flavor(flavor_library *library_to_install
 
 static bool install_flavor_by_name(const char *name)
 {
+    (void)discover_default_flavor_modules();
     for (int i = 0; i < free_index_known_libraries; i++)
     {
         if (strcasecmp(known_libraries[i].compile_time_metadata.name, name) == 0)
@@ -371,11 +392,13 @@ static bool install_flavor_by_path(const char *const path)
 
 static bool install_flavor_by_id(unsigned int id)
 {
+    (void)discover_default_flavor_modules();
+
     for (int i = 0; i < free_index_known_libraries; i++)
     {
         if (known_libraries[i].library_id == id)
         {
-            return execute_checked_install_of_flavor(&(known_libraries[i]));;
+            return execute_checked_install_of_flavor(&(known_libraries[i]));
         }
     }
     return false;
@@ -402,6 +425,7 @@ static bool install_default_flavor(void)
 {
     int i = 0;
 
+    (void)discover_default_flavor_modules();
     bubble_sort_known_libraries();
     for (; i < free_index_known_libraries; i++)
     {
@@ -416,57 +440,232 @@ static bool install_default_flavor(void)
     return false;
 }
 
-static int discover_default_flavor_module(void)
+static int discover_default_flavor_modules(void)
 {
+    if (free_index_known_libraries)
+    {
+        return free_index_known_libraries;
+    }
     return get_paths_of_library_module("FLAVOR_LIB_DIR", search_directory_for_flavor_modules, NULL);
 }
-/*//To delete
-const char *flavor_names(flavor_descriptor_ptr **fd)
-{
-    const char *name;
-    do
-    {
-        if (*fd == NULL)
-            // Init to beginning of list
-            *fd = flavor_list;
-        else
-            // Go to next in list
-            (*fd)++;
-    } while (**fd != NULL && !flavor_can_run_flavor(**fd));
 
-    if (**fd == NULL)
-        // End of list; no name
-        name = NULL;
-    else
-        // Not end; return name
-        name = (**fd)->name;
-    return name;
-}*/
+/* ========== START FLAVOUR module user input functions ========== */
+union flavor_input_data {
+    char flavor_name[MAX_FLAVOR_NAME_LEN + 1];
+    char flavor_path[PATH_MAX];
+    unsigned int flavor_id;
+};
+typedef union flavor_input_data flavor_input_data;
+enum flavor_input_data_state
+{
+    FLAVOR_NOT_SET,
+    FLAVOR_ID_SET,
+    FLAVOR_PATH_SET,
+    FLAVOR_NAME_SET
+};
+typedef enum flavor_input_data_state flavor_input_data_state;
+struct flavor_input_data_processed
+{
+    flavor_input_data_state state;
+    flavor_input_data data;
+};
+typedef struct flavor_input_data_processed flavor_input_data_processed;
 
-//Probably also to delete
-/*
-flavor_descriptor_ptr flavor_byname(const char *flavorname)
+static int parse_flavor_data_from_string(char *input_string, flavor_input_data_processed *output_tuple)
 {
-    flavor_descriptor_ptr *i;
-    for (i = flavor_list; *i != NULL; i++)
+    char *delimiter = NULL;
+    int retval = -1;
+    // Flavor_ID value 0 is invalid
+    uintmax_t flavor_id = 0;
+
+    if (!output_tuple)
     {
-        if (!strcasecmp(flavorname, (*i)->name))
-            break;
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: PARSE_DATA_FROM_STRING was passed NULL pointer as an output_tuple\n");
+        retval = -EINVAL;
+        goto end;
     }
-    return *i;
-}*/
-/*
-//Probably also to delete
-flavor_descriptor_ptr flavor_byid(rtapi_flavor_id_t flavor_id)
+    // This function basically "takes over" the output-tuple object, so signal the NOT-SET state
+    output_tuple->state = FLAVOR_NOT_SET;
+
+    // We are discharging errno before we try to convert input into unsigned integer
+    errno = 0;
+    flavor_id = strtoumax(input_string, &delimiter, 10);
+    if (errno == ERANGE)
+    {
+        // User passed negative value, that's an error
+        rtapi_msg_prinf(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed numeric value as a flavor_id, which is outside the allowed range\n");
+        retval = -ERANGE;
+        goto end;
+    }
+
+    if (*delimiter == '\0')
+    {
+        if (*input_string == '-')
+        {
+            // User passed negative value, that's an error
+            rtapi_msg_prinf(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed negative value as a flavor_id, value: %s\n", input_string);
+            retval = -EINVAL;
+            goto end;
+        }
+        // What user passed is a valid unsigned long integer, not name starting with number, so we are done
+        if (flavor_id > UINT_MAX)
+        {
+            // User passed value too high, that's an error
+            rtapi_msg_prinf(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed value too high as a flavor_id, value: %s, limit: %u\n", input_string, UINT_MAX);
+            retval = -EINVAL;
+            goto end;
+        }
+        if (flavor_id == 0)
+        {
+            // User passed value 0, that's an error
+            rtapi_msg_prinf(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed 0 as a value as a flavor_id, value 0 is not valid\n");
+            retval = -EINVAL;
+            goto end;
+        }
+        output_tuple->data.flavor_id = (unsigned int)flavor_id;
+        output_tuple->state = FLAVOR_ID_SET;
+        rtapi_msg_prinf(RTAPI_MSG_DBG, "RTAPI PARSE_DATA_FROM_STRING found a flavor_ID number %u\n", (unsigned int)flavor_id);
+        goto success;
+    }
+
+    // Test if given string is not an address to a file, in which case we will presume
+    // that user wanted to pass a PATH
+    if (!(faccessat(AT_FDCWD, input_string, F_OK | R_OK, AT_EACCESS)))
+    {
+        if (realpath(input_string, output_tuple->data.flavor_path))
+        {
+            // No error occured, we now should have absolute path copied into output_tuple
+            rtapi_msg_prinf(RTAPI_MSG_DBG, "RTAPI PARSE_DATA_FROM_STRING found a flavor PATH  %s\n", output_tuple->data.flavor_path);
+            output_tuple->state = FLAVOR_PATH_SET;
+            goto success;
+        }
+        int error = errno;
+        rtapi_msg_prinf(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING cout not get REALPATH on file: %s, error (%d)->%s\n", input_string, error, strerror(error));
+        retval = -EINVAL;
+        goto end;
+    }
+
+    // What the user passed is a string name and we will take it as such
+    if (strlen(input_string) > MAX_FLAVOR_NAME_LEN)
+    {
+        // User passed value too long, that's an error
+        rtapi_msg_prinf(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed too long value for flavor name '%s', passed string lenght: %d, maximum lenght: %d\n", input_string, strlen(input_string), MAX_FLAVOR_NAME_LEN);
+        retval = -EINVAL;
+        goto end;
+    }
+    // Zero signals that the value is not used, flavor_id cannot be 0
+    strncpy(output_tuple->data.flavor_name, input_string, sizeof output_tuple->data.flavor_name);
+    output_tuple->state = FLAVOR_NAME_SET;
+    rtapi_msg_prinf(RTAPI_MSG_DBG, "RTAPI PARSE_DATA_FROM_STRING found a flavor name  %s\n", output_tuple->data.flavor_name);
+
+success:
+    retval = 0;
+end:
+    return retval;
+}
+
+static int extract_flavor_from_cmdline_arguments(int argc, char *const *argv, flavor_input_data_processed *output_tuple)
 {
-    flavor_descriptor_ptr *i;
-    for (i = flavor_list; *i != NULL; i++)
+    struct option long_flavor_options[] = {
+        {"flavor", required_argument, 0, 'f'},
+        {0}};
+    char *short_flavor_options = "f:";
+    char *input = NULL;
+    int old_opterr = opterr;
+    int old_optind = optind;
+    int character_retval = -1;
+    int option_index = 0;
+    int retval = -1;
+
+    if (!output_tuple)
     {
-        if ((*i)->flavor_id == flavor_id)
-            break;
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: EXTRACT_FLAVOR_FROM_CMDLINE_ARGUMENTS was passed NULL pointer as an output_tuple\n");
+        retval = -EINVAL;
+        goto end;
     }
-    return *i;
-}*/
+
+    // We are not presuming (actually, we are presuming the exact opposite) that this operation will be the first
+    // iteration
+    optind = 1;
+    // For this operation only, we are setting the error output to silent
+    opterr = 0;
+
+    while ((character_retval = getopt_long(argc, argv, short_flavor_options, long_flavor_options, &option_index)) != -1)
+    {
+        switch (character_retval)
+        {
+        case 'f':
+            if (!input)
+            {
+                // This is little bit on the edge of 'good code' as we are deleting the first '=' if present because
+                // if the user passed argument as a '-f=ident', then optarg will include it and we don't want it
+                // But we are nowhere else specifying that flavour names cannot start with '='
+                // Based on discussion this should be removed
+                input = strdupa((*optarg == '=' ? (optarg + 1) : optarg));
+            }
+            else
+            {
+                // The same option exists more than once in the cmdline arguments, that's an error
+                //rtapi_msg_prinf(RTAPI_ERR,"RTAPI EXTRACT_FLAVOR_FROM_CMDLINE_ARGUMENT was passed --flavor=optarg or -f optarg more than once with arguments '%s' and '%s'\n",input, optarg);
+                retval = -EINVAL;
+                goto cleanup;
+            }
+            break;
+        case '?':
+        case ':':
+        default:
+            break;
+        }
+    }
+    if (!input)
+    {
+        rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: EXTRACT_FLAVOR_FROM_CMDLINE_ARGUMENTS did not discover any --flavor option\n");
+        retval = -ENODATA;
+        goto cleanup;
+    }
+
+    retval = parse_flavor_data_from_string(input, output_tuple);
+
+cleanup:
+    opterr = old_opterr;
+    optind = old_optind;
+end:
+    return retval;
+}
+
+static int extract_flavor_from_cmdline_arguments_wrapper(int *argc, char **argv, void *cloobj)
+{
+    flavor_input_data_processed *fidp = (flavor_input_data_processed *)cloobj;
+    return extract_flavor_from_cmdline_arguments(*argc, (char *const *)argv, fidp);
+}
+
+static int extract_flavor_from_environmet_variables(flavor_input_data_processed *output_tuple)
+{
+    char *input = NULL;
+    int retval = -1;
+
+    if (!output_tuple)
+    {
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: EXTRACT_FLAVOR_FROM_ENVIRONMENT_VARIABLES was passed NULL pointer as an output_tuple\n");
+        retval = -EINVAL;
+        goto end;
+    }
+
+    input = getenv("FLAVOR");
+    if (!input)
+    {
+        // Nothing found in environment
+        rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: EXTRACT_FLAVOR_FROM_ENVIRONMENT_VARIABLES did not discover any FLAVOR variable\n");
+        retval = -ENODATA;
+        goto end;
+    }
+
+    retval = parse_flavor_data_from_string(input, output_tuple);
+
+end:
+    return retval;
+}
+/* ========== END FLAVOUR module user input functions ========== */
 
 /*
  * Here are implemented the nonstatic "public" function by which higher parts of rtapi.so program
@@ -474,94 +673,124 @@ flavor_descriptor_ptr flavor_byid(rtapi_flavor_id_t flavor_id)
  * These functions are also exported by the EXPORT_SYMBOL MACRO
 */
 
-int get_names_of_known_flavor_modules(void)
+int get_names_of_known_flavor_modules(char *output_string_map)
 {
+    int string_counter = 0;
+    size_t string_lenght = 0;
+    size_t delta = 0;
+    char *delimiter = NULL;
+
+    if (!output_string_map)
+    {
+        // The output_string_map pointer is not set to NULL
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: GET_NAME_OF_KNOWN_MODULES was passed NULL pointer as an output_string_map\n");
+        goto end;
+    }
+
+    for (int i = 0; i < free_index_known_libraries; i++)
+    {
+        string_lenght += strlen(known_libraries[i].compile_time_metadata.name) + 1;
+    }
+
+    output_string_map = malloc(string_lenght);
+    if (!output_string_map)
+    {
+        // An error occured when mallocing new string map
+        int error = errno;
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: GET_NAME_OF_KNOWN_MODULES encountered an error when mallocing %d chars for output_string_map with error (%d)->%s\n", string_lenght, error, strerror(error));
+        goto end;
+    }
+
+    delimiter = output_string_map;
+    for (int i = 0; i < free_index_known_libraries; i++)
+    {
+        delta = strlen(known_libraries[i].compile_time_metadata.name) + 1;
+        strncpy(delimiter, known_libraries[i].compile_time_metadata.name, delta);
+        delimiter += delta;
+    }
+
+    string_counter = free_index_known_libraries;
+
+end:
+    return string_counter;
 }
 
-int flavor_module_startup(){}
-// TO REWORK!!!
-flavor_descriptor_ptr flavor_default(void)
+int flavor_module_startup(void)
 {
-    const char *fname = getenv("FLAVOR");
-    flavor_descriptor_ptr *flavor_handle = NULL;
-    flavor_descriptor_ptr flavor = NULL;
+    flavor_input_data_processed flavor_information_cmdline;
+    flavor_input_data_processed flavor_information_environment;
+    flavor_input_data_processed *valid_data = NULL;
+    int retval_cmdline = -1;
+    int retval_environment = -1;
+    int retval = -1;
 
-    if (fname && fname[0])
+    retval_cmdline = execute_on_cmdline_copy(extract_flavor_from_cmdline_arguments_wrapper, (void *)&flavor_information_cmdline);
+    retval_environment = extract_flavor_from_environmet_variables(&flavor_information_environment);
+
+    if (retval_cmdline != -ENODATA && retval_environment != -ENODATA)
     {
-        // $FLAVOR set in environment:  verify it or fail
-        flavor = flavor_byname(fname);
-        if (flavor == NULL)
+        // At least one has to be -ENODATA (i.e. variable/argument not present), as we consider passing command both
+        // in Environment variable and Commandline argument as a potential security rist
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR_MODULE_STARTUP cannot have have defined both --flavor in commandline arguments [(%d)->%s] and FLAVOR in environment variables [(%d)->%s]\n", retval_cmdline, strerror(-retval_cmdline), retval_environment, strerror(-retval_environment));
+        retval = -EPERM;
+        goto end;
+    }
+    if (retval_cmdline != 0 && retval_cmdline != -ENODATA)
+    {
+        // An error when processing the command line arguments occured
+        retval = retval_cmdline;
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR_MODULE_STARTUP discovered an error in --flavor in commandline arguments (%d)->%s\n", retval_cmdline, strerror(-retval_cmdline));
+        goto end;
+    }
+    if (retval_environment != 0 && retval_environment != -ENODATA)
+    {
+        // An error when processing the environment variables occured
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR_MODULE_STARTUP discovered an error in FLAVOR in environment variables (%d)->%s\n", retval_environment, strerror(-retval_environment));
+        retval = retval_environment;
+        goto end;
+    }
+
+    // At this point only one or none retval_* should be 0, so store the address of valid structure into
+    // a pointer for easy access later on
+    if (!retval_cmdline)
+    {
+        valid_data = &flavor_information_cmdline;
+    }
+    if (!retval_environment)
+    {
+        valid_data = &flavor_information_environment;
+    }
+
+    // The pointer is not NULL, which means that user expressed which flavour module he wants to load
+    if (valid_data)
+    {
+        switch (valid_data->state)
         {
-            rtapi_print_msg(RTAPI_MSG_ERR, "FATAL:  No such flavor '%s';"
-                                           " valid flavors are\n",
-                            fname);
-            for (flavor_handle = NULL; (fname = flavor_names(&flavor_handle));)
-                rtapi_print_msg(RTAPI_MSG_ERR, "FATAL:      %s\n",
-                                (*flavor_handle)->name);
-            EXIT_NULL(100);
-        }
-        if (!flavor_can_run_flavor(flavor))
-        {
-            rtapi_print_msg(RTAPI_MSG_ERR, "FATAL:  Flavor '%s' from"
-                                           " environment cannot run\n",
-                            fname);
-            EXIT_NULL(101);
-        }
-        else
-        {
-            rtapi_print_msg(RTAPI_MSG_INFO,
-                            "INFO:  Picked flavor '%s' id %d (from environment)\n",
-                            flavor->name, flavor->flavor_id);
-            return flavor;
+        case FLAVOR_PATH_SET:
+            retval = install_flavor_by_path(valid_data->data.flavor_path);
+            goto end;
+        case FLAVOR_ID_SET:
+            retval = install_flavor_by_id(valid_data->data.flavor_id);
+            goto end;
+        case FLAVOR_NAME_SET:
+            retval = install_flavor_by_name(valid_data->flavor_name);
+            goto end;
+        default:
+            // This absolutelly should not happen as it means FLAVOR_NOT_SET
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR_MODULE_STARTUP encountered an unknown error\n");
+            retval = -ENOTRECOVERABLE;
+            goto end;
         }
     }
+    // The user did not specify which flavour module he wants to load, the program will automatically load the best
+    // module available
     else
     {
-        // Find best flavor automatically
-        flavor = NULL;
-        for (flavor_handle = flavor_list;
-             *flavor_handle != NULL;
-             flavor_handle++)
-        {
-            // Best is highest ID that can run
-            if ((!flavor || (*flavor_handle)->flavor_id > flavor->flavor_id) && flavor_can_run_flavor(*flavor_handle))
-                flavor = (*flavor_handle);
-        }
-        if (!flavor)
-        {
-            // This should never happen:  POSIX can always run
-            rtapi_print_msg(RTAPI_MSG_ERR,
-                            "ERROR:  Unable to find runnable flavor\n");
-            EXIT_NULL(102);
-        }
-        else
-        {
-            rtapi_print_msg(RTAPI_MSG_INFO, "INFO:  Picked default flavor '%s'"
-                                            " automatically\n",
-                            flavor->name);
-            return flavor;
-        }
+        retval = install_default_flavor();
     }
-}
 
-// Flavour will install itself automatically as plugin module
-void flavor_install(flavor_descriptor_ptr flavor)
-{
-    if (flavor_descriptor != NULL)
-    {
-        rtapi_print_msg(RTAPI_MSG_ERR, "FATAL:  Flavor '%s' already"
-                                       " configured\n",
-                        flavor_descriptor->name);
-        EXIT_NORV(103);
-    }
-    if (!flavor_can_run_flavor(flavor))
-    {
-        rtapi_print_msg(RTAPI_MSG_ERR, "FATAL:  Flavor '%s' cannot run\n",
-                        flavor->name);
-        EXIT_NORV(104);
-    }
-    flavor_descriptor = flavor;
-    rtapi_print_msg(RTAPI_MSG_DBG, "Installed flavor '%s'\n", flavor->name);
+end:
+    return retval;
 }
 
 int flavor_is_configured(void)
