@@ -500,6 +500,8 @@ static int parse_flavor_data_from_string(char *input_string, flavor_input_data_p
 
     if (*delimiter == '\0')
     {
+        // There is a possibility that the user wanted flavour NAME or file with path looking like '-number', however
+        // this is little bit far fetched, ugly and solvable by changing 'goto end' to 'goto file-test'
         if (*input_string == '-')
         {
             // User passed negative value, that's an error
@@ -793,6 +795,10 @@ end:
     return retval;
 }
 
+int flavor_module_shutdown(void){
+    // Dodělat implementaci
+}
+
 int flavor_is_configured(void)
 {
     //rework to use states
@@ -800,13 +806,11 @@ int flavor_is_configured(void)
 }
 
 #ifdef RTAPI
-EXPORT_SYMBOL(flavor_names);
+EXPORT_SYMBOL(get_names_of_known_flavor_modules);
+EXPORT_SYMBOL(flavor_module_startup);
 EXPORT_SYMBOL(flavor_is_configured);
-EXPORT_SYMBOL(flavor_byname);
-EXPORT_SYMBOL(flavor_default);
-//EXPORT_SYMBOL(flavor_install);
-EXPORT_SYMBOL(uninstall_flavor);
-EXPORT_SYMBOL(get_installed_flavor_name);
-EXPORT_SYMBOL(get_installed_flavor_id);
-EXPORT_SYMBOL(verify_installed_flavor_feature)
+EXPORT_SYMBOL(flavor_module_shutdown);
+//EXPORT_SYMBOL(get_installed_flavor_name); //move to the place with the rest
+//EXPORT_SYMBOL(get_installed_flavor_id); //move to the place with the rest
+//EXPORT_SYMBOL(verify_installed_flavor_feature) //move to the place with the rest
 #endif
