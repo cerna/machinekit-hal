@@ -102,7 +102,7 @@ long long int rtapi_get_time(void) {
 
 long long int rtapi_get_clocks(void) {
     long long int res;
-    res = flavor_get_clocks_hook(NULL);
+    res = flavor_get_clocks_hook();
     if (res == -ENOSYS) { // Unimplemented
 
 #     ifdef MSR_H_USABLE
