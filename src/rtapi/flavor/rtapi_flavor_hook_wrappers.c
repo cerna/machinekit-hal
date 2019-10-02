@@ -318,11 +318,11 @@ int flavor_task_pll_set_correction_hook(long value)
         return 0;*/
 }
 
-const char *get_installed_flavor_name(void) {}
+const char *get_installed_flavor_name(void) { return "PERFECT"; }
 
-unsigned int get_installed_flavor_id(void) {}
+unsigned int get_installed_flavor_id(void) { return 1000; }
 
-int verify_installed_flavor_feature(int feature) {}
+int verify_installed_flavor_feature(int feature) { return 0; }
 
 /*const char *flavor_name(void)
 {

@@ -184,6 +184,8 @@ int flavor_module_shutdown(void);
     extern flavor_access_structure_ptr global_flavor_access_structure_ptr;
     /* ========== END FLAVOUR module global access structure ========== */
 
+    // Předělat
+    const char*  get_installed_flavor_name();
     /*// Wrappers around flavor_descriptor
     typedef const char *(flavor_names_t)(flavor_descriptor_ptr **fd);
     extern flavor_names_t flavor_names;

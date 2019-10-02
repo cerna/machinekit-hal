@@ -218,7 +218,7 @@ int rtapi_module_init()
     retval = flavor_module_startup();
     if (retval != 1) // Předělat
     {
-        rtapi_print_msg(RTAPI_MSG_ERR, "%s:%d Loading of flavor module failed with an error (%d)->%s\n", LOGTAG, rtapi_instance, retval, strerr(-retval));
+        rtapi_print_msg(RTAPI_MSG_ERR, "%s:%d Loading of flavor module failed with an error (%d)->%s\n", LOGTAG, rtapi_instance, retval, strerror(-retval));
         return retval;
     }
     rtapi_print_msg(RTAPI_MSG_DBG, "%s:%d  %s %s init\n", LOGTAG, rtapi_instance, get_installed_flavor_name(), GIT_VERSION);
