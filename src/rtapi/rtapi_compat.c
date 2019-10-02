@@ -298,14 +298,14 @@ close_mmap:
     if (retval)
     {
         int error = errno;
-        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: ELF section scrawler: The ELF file '%s' signaled error while munmapping: (%d)\n", error, strerror(error));
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: ELF section scrawler: The ELF file '%s' signaled error while munmapping: (%d)->%s\n", elf_file_real_path, error, strerror(error));
     }
 close_fd:
     retval = close(fd);
     if (retval)
     {
         int error = errno;
-        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: ELF section scrawler: The ELF file '%s' signaled error while closing the FD: (%d)\n", error, strerror(error));
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: ELF section scrawler: The ELF file '%s' signaled error while closing the FD: (%d)->%s\n", elf_file_real_path, error, strerror(error));
     }
 end:
     return retval_section_found;
@@ -343,7 +343,7 @@ int get_elf_section(const char *const fname, const char *section_name, void **de
     if (realpath(fname, file_real_path) == NULL)
     {
         int error = errno;
-        perror("rtapi_compat.c: could not resolve realpath of file %s. Error: (%d)->%s", fname, error, strerror(error));
+        perror("rtapi_compat.c: could not resolve realpath of file ELF file\n");
         goto end;
     }
     if (scan_file_for_elf_sections((const char *const)file_real_path, find_section_name_and_allocate, &co))

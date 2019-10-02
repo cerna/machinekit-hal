@@ -68,7 +68,6 @@ XXAPI_COMMON_SRCS := $(patsubst %, rtapi/%, \
 ##################################################################
 
 ULAPI_SRCS := \
-#	rtapi/flavor/ulapi.c 
 	machinetalk/lib/syslog_async.c \
 	rtapi/rtapi_hexdump.c \
 	$(XXAPI_COMMON_SRCS)
