@@ -159,8 +159,6 @@ int rtapi_module_init()
         ulapi_debug = atoi(debug_env);
     rtapi_set_msg_level(ulapi_debug);
 
-    // Set up the ulapi flavor
-    flavor_install(flavor_byname("ulapi"));
 #endif
 
     int globalkey = OS_KEY(GLOBAL_KEY, rtapi_instance);
@@ -214,6 +212,9 @@ int rtapi_module_init()
     init_rtapi_data(rtapi_data);
 
     // FLAVOUR MODULE initialization and associated operations
+    #ifdef ULAPI
+    // startup ulapi flavor
+    #endif
     retval = flavor_module_startup();
     if (retval != 1) // Předělat
     {
