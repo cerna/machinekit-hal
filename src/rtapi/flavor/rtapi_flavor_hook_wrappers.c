@@ -53,7 +53,7 @@ int flavor_module_init_hook(void)
     else
         return 0;*/
 }
-void flavor_module_exit_hook(void)
+int flavor_module_exit_hook(void)
 {
     if (global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor && global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor)
     {

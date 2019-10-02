@@ -204,7 +204,7 @@ int flavor_module_shutdown(void);
     // exported by FLAVOUR module implementation and service the RTAPI side of Machinekit
     extern int flavor_exception_handler_hook(int type, rtapi_exception_detail_t *detail, int level);
     extern int flavor_module_init_hook(void);
-    extern void flavor_module_exit_hook(void);
+    extern int flavor_module_exit_hook(void);
     extern int flavor_task_update_stats_hook(void);
     extern void flavor_task_print_thread_stats_hook(int task_id);
     extern int flavor_task_new_hook(int task_id, task_data *task);
