@@ -21,6 +21,10 @@ extern "C"
 
 #define MAX_FLAVOR_NAME_LEN 20
 
+int flavor_module_startup(void);
+
+int flavor_module_shutdown(void);
+
 // The exception code puts structs in shm in an opaque blob; this is used to
 // check the allocated storage is large enough
 // https://stackoverflow.com/questions/807244/

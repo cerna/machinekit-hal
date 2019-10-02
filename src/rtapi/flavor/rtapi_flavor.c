@@ -795,14 +795,15 @@ end:
     return retval;
 }
 
-int flavor_module_shutdown(void){
+int flavor_module_shutdown(void)
+{
     // Dodělat implementaci
 }
 
 int flavor_is_configured(void)
 {
     //rework to use states
-    return flavor_descriptor != NULL;
+    //return flavor_descriptor != NULL;
 }
 
 #ifdef RTAPI

@@ -322,7 +322,7 @@ const char *get_installed_flavor_name(void) {}
 
 unsigned int get_installed_flavor_id(void) {}
 
-int verify_installed_flavor_feature(int feature) {}
+int flavor_verify_feature(int feature) {}
 
 /*const char *flavor_name(void)
 {
