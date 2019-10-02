@@ -92,14 +92,14 @@ static inline bool check_function_pointer_validity(void *function_ptr)
     return function_ptr ? true : false;
 }
 
-#define CHECK_FOR_FUNCTION(structure, function_name)               \
-    do                                                             \
-    {                                                              \
-    if (!check_function_pointer_validity(structure->function_name) \
-    {                                                         \
-        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library finder: Flavor '%s' defined in '%s' exports NULL %s function. This is extremely bad.\n", flavor_name, flavor_real_path, ##function_name); \
-        retval = false;                                       \
-    }                                                              \
+#define CHECK_FOR_FUNCTION(structure, function_name)                                                                                                                                                             \
+    do                                                                                                                                                                                                           \
+    {                                                                                                                                                                                                            \
+        if (!check_function_pointer_validity(structure->function_name))                                                                                                                                          \
+        {                                                                                                                                                                                                        \
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library finder: Flavor '%s' defined in '%s' exports NULL %s function. This is extremely bad.\n", flavor_name, flavor_real_path, ##function_name); \
+            retval = false;                                                                                                                                                                                      \
+        }                                                                                                                                                                                                        \
     } while (false);
 
 static bool is_flavor_runtime_business_valid(const char *const flavor_name, const char *const flavor_real_path, flavor_runtime_business_ptr runtime_business)
