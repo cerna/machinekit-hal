@@ -91,7 +91,7 @@ long int rtapi_delay_max(void)
 long long int rtapi_get_time(void) {
     long long int res;
 
-    res = flavor_get_time_hook(NULL);
+    res = flavor_get_time_hook();
     if (res == -ENOSYS) { // Unimplemented
         struct timespec ts;
         clock_gettime(CLOCK_MONOTONIC, &ts);
