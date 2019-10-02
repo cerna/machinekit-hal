@@ -8,6 +8,7 @@ extern "C"
 
 #include <assert.h>
 #include "rtapi_common.h"
+#include "hal_types.h"
 
 // Flavor features:  flavor_cold_metadata.flags bits for configuring flavor
 // - Whether iopl() needs to be called
