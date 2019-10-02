@@ -22,4 +22,4 @@
 
 #include "rtapi_flavor.h"
 
-extern flavor_descriptor_t flavor_ulapi_descriptor;
+//extern flavor_descriptor_t flavor_ulapi_descriptor;
