@@ -211,7 +211,7 @@ bool scan_file_for_elf_sections(const char *const elf_file_real_path, elf_sectio
     // ELF file magic bytes than do it after mmaping into memory
     // Especially if we want to run this function on big set of arbitrary files
     char tested_file_header[4];
-    if (read(fd), (void *)&tested_file_header, 4 * sizeof(char) != 4 * sizeof(char))
+    if (read(fd, (void *)&tested_file_header, 4 * sizeof(char) != 4 * sizeof(char)))
     {
         int error = errno;
         rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: ELF section scrawler: There was an error when trying to read 4 chars from open file '%s': (%d)->%s\n", elf_file_real_path, error, strerror(error));
