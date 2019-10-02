@@ -211,7 +211,7 @@ static void configure_flavor(machinetalk::Container &pbreply)
     dlerror();
     GET_FLAVOR_FUNC(flavor_name, get_installed_flavor_name);
     GET_FLAVOR_FUNC(flavor_is_configured, flavor_is_configured);
-    GET_FLAVOR_FUNC(flavor_feature, flavor_verify_feature);
+    GET_FLAVOR_FUNC(flavor_feature, verify_installed_flavor_feature);
 
     have_flavor_funcs = 1; // Don't run this again
 }
