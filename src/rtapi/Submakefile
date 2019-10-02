@@ -25,9 +25,9 @@ XENOMAI_HEADER = rtapi/flavor/xenomai2.h
 endif
 
 HEADERS += \
-	rtapi/flavor/rtapi_flavor.h \
-	rtapi/flavor/rt-preempt.h \
-	$(XENOMAI_HEADER)
+#	rtapi/flavor/rtapi_flavor.h \
+#	rtapi/flavor/rt-preempt.h \
+#	$(XENOMAI_HEADER)
 
 ##########################################
 # Clean up
@@ -53,6 +53,8 @@ XXAPI_COMMON_SRCS := $(patsubst %, rtapi/%, \
 	rtapi_compat.c \
 	flavor/rtapi_flavor.c \
 	flavor/rtapi_flavor_hook_wrappers.c \
+	rtapi_lib_find.c \
+	rtapi_cmdline_args.c \
 	)
 
 # rtapi_compat needs to know where rtapi.ini lives
@@ -66,7 +68,7 @@ XXAPI_COMMON_SRCS := $(patsubst %, rtapi/%, \
 ##################################################################
 
 ULAPI_SRCS := \
-	rtapi/flavor/ulapi.c \
+#	rtapi/flavor/ulapi.c 
 	machinetalk/lib/syslog_async.c \
 	rtapi/rtapi_hexdump.c \
 	$(XXAPI_COMMON_SRCS)
@@ -218,7 +220,8 @@ $(RTLIBDIR)/rtapi.so: EXTRA_LDFLAGS += \
 RTAPI_APP_SRCS := \
 	rtapi/rtapi_app.cc \
 	rtapi/rtapi_support.c \
-	rtapi/rtapi_compat.c
+	rtapi/rtapi_compat.c \
+	rtapi/rtapi_cmdline_args.c
 
 USERSRCS += $(RTAPI_APP_SRCS)
 

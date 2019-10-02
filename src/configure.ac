@@ -1739,6 +1739,8 @@ AH_TOP([/********************************************************************
 // service name is: log, rtapi, halrcomp etc
 #define ZMQIPC_FORMAT "ipc://%s/%d.%s.%s"
 
+#define MAX_FLAVOR_NAME_LEN 20
+
 ])
 
 AH_VERBATIM([_GNU_SOURCE],

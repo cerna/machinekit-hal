@@ -19,8 +19,6 @@ extern "C"
 // - Whether flavor runs outside RTAPI threads
 #define FLAVOR_NOT_RTAPI RTAPI_BIT(3)
 
-#define MAX_FLAVOR_NAME_LEN 20
-
 int flavor_module_startup(void);
 
 int flavor_module_shutdown(void);
