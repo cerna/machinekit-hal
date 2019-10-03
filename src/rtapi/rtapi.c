@@ -24,6 +24,10 @@
 #include "shmdrv.h" /* common shm driver API */
 #include "ring.h"
 
+#ifdef ULAPI
+#include <stdlib.h>
+#endif
+
 /* these pointers are initialized at startup to point
    to resource data in the master data structure above
    all access to the data structure should uses these
@@ -159,6 +163,12 @@ int rtapi_module_init()
         ulapi_debug = atoi(debug_env);
     rtapi_set_msg_level(ulapi_debug);
 
+    // Setting up the environment variable for ULAPI FLAVOUR so the automatic loader will load it
+    // Having some --flavor= in commandline arguments is considered as an error at this point and will
+    // be treated as such
+    // 12841 is a flavor_ID magic number for ULAPI FLAVOUR
+    setenv("FLAVOR", "12841", true);
+
 #endif
 
     int globalkey = OS_KEY(GLOBAL_KEY, rtapi_instance);
@@ -212,9 +222,6 @@ int rtapi_module_init()
     init_rtapi_data(rtapi_data);
 
     // FLAVOUR MODULE initialization and associated operations
-    #ifdef ULAPI
-    // startup ulapi flavor
-    #endif
     retval = flavor_module_startup();
     if (retval != 1) // Předělat
     {
