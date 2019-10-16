@@ -20,9 +20,21 @@ extern "C"
 // - Whether flavor runs outside RTAPI threads
 #define FLAVOR_NOT_RTAPI RTAPI_BIT(3)
 
-int flavor_module_startup(void);
+    int flavor_module_startup(void);
 
-int flavor_module_shutdown(void);
+    int flavor_module_shutdown(void);
+
+/* ========== START values for global FLAVOUR module state ========== */
+#define FLAVOR_STATE_INITIALIZATION 0b1
+#define FLAVOR_STATE_EXIT           0b10
+#define FLAVOR_STATE_INSTALL        0b100
+#define FLAVOR_STATE_ARM            0b1000
+
+#define FLAVOR_STATE_INITIALIZED FLAVOR_STATE_INITIALIZATION
+#define FLAVOR_STATE_EXITED     (FLAVOR_STATE_INITIALIZATION | FLAVOR_STATE_EXIT)
+#define FLAVOR_STATE_INSTALLED  (FLAVOR_STATE_INITIALIZATION | FLAVOR_STATE_INSTALL)
+#define FLAVOR_STATE_ARMED      (FLAVOR_STATE_INITIALIZATION | FLAVOR_STATE_INSTALL | FLAVOR_STATE_ARM)
+/* ========== END values for global FLAVOUR module state ========== */
 
 // The exception code puts structs in shm in an opaque blob; this is used to
 // check the allocated storage is large enough
@@ -35,14 +47,14 @@ int flavor_module_shutdown(void);
      * in additio to the constructor and destructor functions
      * Specific FLAVOUR module has to implement at least subset
     */
-    typedef void (*rtapi_exception_handler_hook_t)(int type, rtapi_exception_detail_t *detail, int level);
+    typedef int (*rtapi_exception_handler_hook_t)(int type, rtapi_exception_detail_t *detail, int level);
     /* FLAVOUR module HAS TO IMPLEMENT
      * RETURN VALUE: 
     */
     typedef int (*rtapi_module_init_hook_t)(void);
     /* FLAVOUR module HAS TO IMPLEMENT
     */
-    typedef void (*rtapi_module_exit_hook_t)(void);
+    typedef int (*rtapi_module_exit_hook_t)(void);
     typedef int (*rtapi_task_update_stats_hook_t)(void);
     typedef void (*rtapi_print_thread_stats_hook_t)(int task_id);
     /* FLAVOUR module HAS TO IMPLEMENT
@@ -185,7 +197,7 @@ int flavor_module_shutdown(void);
     /* ========== END FLAVOUR module global access structure ========== */
 
     // Předělat
-    const char*  get_installed_flavor_name();
+    const char *get_installed_flavor_name();
     /*// Wrappers around flavor_descriptor
     typedef const char *(flavor_names_t)(flavor_descriptor_ptr **fd);
     extern flavor_names_t flavor_names;
@@ -206,7 +218,7 @@ int flavor_module_shutdown(void);
     extern int flavor_module_init_hook(void);
     extern int flavor_module_exit_hook(void);
     extern int flavor_task_update_stats_hook(void);
-    extern void flavor_task_print_thread_stats_hook(int task_id);
+    extern int flavor_task_print_thread_stats_hook(int task_id);
     extern int flavor_task_new_hook(int task_id, task_data *task);
     extern int flavor_task_delete_hook(int task_id);
     extern int flavor_task_start_hook(int task_id);
@@ -214,7 +226,7 @@ int flavor_module_shutdown(void);
     extern int flavor_task_pause_hook(int task_id);
     extern int flavor_task_wait_hook(const int flags);
     extern int flavor_task_resume_hook(int task_id);
-    extern void flavor_task_delay_hook(long int nsec);
+    extern int flavor_task_delay_hook(long int nsec);
     extern long long int flavor_get_time_hook(void);
     extern long long int flavor_get_clocks_hook(void);
     extern int flavor_task_self_hook(void);

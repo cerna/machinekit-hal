@@ -23,6 +23,8 @@
 #include "ulapi.h"
 #endif
 
+#define MEMBER_SIZEOF(structure, member) sizeof(((structure *)0)->member)
+
 extern char *optarg;
 extern int optind;
 extern int opterr;
@@ -31,12 +33,11 @@ extern int optopt;
 struct flavor_library
 {
     flavor_cold_metadata compile_time_metadata;
-    const char *library_path; //Path to the dynamic library implementing the flavor API
-    bool library_used;
+    const char *const library_path; //Path to the dynamic library implementing the flavor API
+    // Simple linked list implementation
+    struct flavor_library *next;
 };
 typedef struct flavor_library flavor_library;
-
-#define MAX_NUMBER_OF_FLAVORS 10
 
 // Help for unit test mocking
 int flavor_mocking = 0;     // Signal from tests
@@ -74,10 +75,85 @@ flavor_access_structure_ptr global_flavor_access_structure_ptr = &global_flavor_
 // Local solib handle of currently open flavor
 static void *flavor_handle = NULL;
 
-// Simpler than linked list and so-so good enough
-// TODO: ReDO to real linked list
-static flavor_library known_libraries[MAX_NUMBER_OF_FLAVORS] = {0};
-static unsigned int free_index_known_libraries = 0;
+/* ========== START FLAVOUR module VERY SIMPLE flavour library linked list ========== */
+
+// This linked list implementation is extremely simple and as such very susceptible to errors, the only method of access
+// is itineration over all elements starting from the head (known_libraries_head)
+
+static flavor_library *known_libraries_head = NULL;
+static unsigned int known_libraries_index = 0;
+
+static int add_flavor_library_to_list(flavor_library *new_node)
+{
+    flavor_library *new_library = NULL;
+
+    if (!new_node)
+    {
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library linked list adder: The flavor library module passed as an argument was NULL\n");
+        return -EINVAL;
+    }
+    new_library = malloc(sizeof(flavor_library));
+    if (!new_library)
+    {
+        int error = -errno;
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library linked list adder: Cannot malloc space for the new flavor library module named %s of path %s, error (%d)->%s\n", new_node->compile_time_metadata.name, new_node->library_path, error, strerror(-error));
+        return error;
+    }
+    memcpy(new_library, new_node, sizeof(flavor_library));
+    if (known_libraries_head)
+    {
+        flavor_library *current = known_libraries_head;
+        flavor_library *previous = NULL;
+        while (current)
+        {
+            previous = current;
+            current = current->next;
+        }
+        previous->next = known_libraries_head;
+    }
+    else
+    {
+        known_libraries_head = new_library;
+    }
+    known_libraries_index++;
+
+    return 0;
+}
+
+static void flavor_library_free(flavor_library *to_free)
+{
+    free(to_free->library_path);
+    free(to_free);
+}
+
+static void delete_whole_list(void)
+{
+    known_libraries_head = NULL;
+    for (flavor_library *head = known_libraries_head, *next = NULL; head; head = next)
+    {
+        next = head->next;
+        flavor_library_free(head);
+        known_libraries_index--;
+    }
+}
+
+void signal_if_excessive_number_of_flavor_libraries_found(void)
+{
+    static bool signalled = false;
+    if (known_libraries_index > 50)
+    {
+        if (signalled)
+        {
+            rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOUR API library finder: The flavor library module number %d found, this is a little bit excessive\n", known_libraries_index);
+        }
+        else
+        {
+            signalled = true;
+            rtapi_print_msg(RTAPI_MSG_INFO, "RTAPI: FLAVOUR API library finder: There seems to be an excessive number of found flavor library modules\n");
+        }
+    }
+}
+/* ========== END FLAVOUR module VERY SIMPLE flavour library linked list ========== */
 
 static inline bool check_function_pointer_validity(void *function_ptr)
 {
@@ -139,12 +215,12 @@ static bool flavor_library_factory(const char *path, const char *name, unsigned 
     // will all be treated as a match
     // But the name HAS(!) TO BE unique even by case-insensitive match and is generally
     // shorter to test than path
-    for (int i = 0; i < free_index_known_libraries; i++)
+    for (flavor_library *index = known_libraries_head; index; index = index->next)
     {
-        if (strcasecmp(known_libraries[i].compile_time_metadata.name, name) == 0)
+        if (strcasecmp(index->compile_time_metadata.name, name) == 0)
         {
             // ReDO: Check for name and ID and then maybe path, and what about magic?
-            if (strcmp(known_libraries[i].library_path, path) != 0)
+            if (strcmp(index->library_path, path) != 0)
             {
                 rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library finder: Two libraries with same name name, but different paths were found on the system. First library '%s' on %s, second library '%s' on %s.", known_libraries[i].library_name, known_libraries[i].library_path, name, path);
                 return false;
@@ -152,51 +228,34 @@ static bool flavor_library_factory(const char *path, const char *name, unsigned 
             rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOUR API library finder: Two libraries with same name '%s' were found on the system in %s.", name, path);
             return false;
         }
-
-        flavor_library *temp = &known_libraries[free_index_known_libraries];
-        if (temp->library_used)
-        {
-            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library finder: There was an error by trying to access once created library");
-        }
-        strncpy(temp->compile_time_metadata.name, name, MAX_FLAVOR_NAME_LEN + 1);
-        char *path_alloc = strdup(path);
-        if (path_alloc == NULL)
-        {
-            int error = errno;
-            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library finder: There was an error when trying to malloc: (%d)->%s", error, strerror(error));
-            *temp = {0};
-            return false;
-        }
-        free_index_known_libraries++;
-        temp->library_path = (const char *)path_alloc;
-        temp->compile_time_metadata.weight = weight;
-        temp->compile_time_metadata.id = id;
-        temp->compile_time_metadata.magic = magic;
-        temp->compile_time_metadata.flags = flags;
-        temp->library_used = true;
-
-        return true;
     }
-}
 
-static void flavor_library_free(flavor_library *to_free)
-{
-    free(to_free->library_path);
-    *to_free = {0};
-    to_free->library_used = false;
-}
+    signal_if_excessive_number_of_flavor_libraries_found();
 
-static bool free_known_libraries(void)
-{
-    if (free_index_known_libraries == 0)
+    // Path is mallocated once even if it would be prettier to have it in an array in flavor_library the same way
+    // as flavor_cold_metadata.name, but given the PATH_MAX is pretty big, it would cause unnecessary large copying (about 2 order of magnitude)
+    char *path_alloc = strdup(path);
+    if (!path_alloc)
     {
+        int error = errno;
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library finder: There was an error when trying to malloc: (%d)->%s", error, strerror(error));
         return false;
     }
-    for (int i = 0; i < free_index_known_libraries; i++)
+    flavor_library library = {
+        .compile_time_metadata = {
+            .id = id,
+            .weight = weight,
+            .magic = magic,
+            .flags = flags},
+        .library_path = path_alloc,
+        .next = NULL};
+    strncpy(library.compile_time_metadata.name, name, MEMBER_SIZEOF(flavor_cold_metadata, name));
+
+    if (!add_flavor_library_to_list(&library))
     {
-        flavor_library_free(&known_libraries[i]);
+        return true;
     }
-    return true;
+    return false;
 }
 
 /* ========== START FLAVOUR module registration and unregistration functions ========== */
@@ -405,20 +464,35 @@ static bool install_flavor_by_id(unsigned int id)
     return false;
 }
 
-static void bubble_sort_known_libraries(void)
+static void bubble_sort_known_libraries_list(void)
 {
-    flavor_library temporary = {0};
-    for (int i = 0; i < free_index_known_libraries - 1; i++)
+    flavor_library *previous = NULL;
+    flavor_library *next = NULL;
+    flavor_library *current = NULL;
+
+    if (known_libraries_index < 2)
     {
-        for (int ii = i; ii < free_index_known_libraries - i - 1; ii++)
+        // Nothing to do
+        return;
+    }
+
+    current = known_libraries_head;
+    next = current->next;
+
+    flavor_library *active = known_libraries_head;
+    for (;;)
+    {
+        active;// je not NULL
+        for (;;)
         {
-            if (known_libraries[ii + 1].library_weight < known_libraries[ii].library_weight)
+            if (current->compile_time_metadata.weight < next->compile_time_metadata.weight)
             {
-                temporary = known_libraries[ii + 1];
-                known_libraries[ii + 1] = known_libraries[ii];
-                known_libraries[ii] = temporary;
             }
+            previous = current;
+            current = next;
+            next = current->next;
         }
+        active = active->next;
     }
 }
 
@@ -809,10 +883,7 @@ int flavor_is_configured(void)
 
 #ifdef RTAPI
 EXPORT_SYMBOL(get_names_of_known_flavor_modules);
-EXPORT_SYMBOL(flavor_module_startup);
+//EXPORT_SYMBOL(flavor_module_startup);
 EXPORT_SYMBOL(flavor_is_configured);
-EXPORT_SYMBOL(flavor_module_shutdown);
-//EXPORT_SYMBOL(get_installed_flavor_name); //move to the place with the rest
-//EXPORT_SYMBOL(get_installed_flavor_id); //move to the place with the rest
-//EXPORT_SYMBOL(verify_installed_flavor_feature) //move to the place with the rest
+//EXPORT_SYMBOL(flavor_module_shutdown);
 #endif

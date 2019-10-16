@@ -75,7 +75,7 @@ void rtapi_delay(long int nsec)
     if (nsec > max_delay) {
 	nsec = max_delay;
     }
-    flavor_task_delay_hook(NULL, nsec);
+    (void)flavor_task_delay_hook(nsec);
 }
 
 
@@ -89,20 +89,13 @@ long int rtapi_delay_max(void)
 /* The following functions are common to both RTAPI and ULAPI */
 
 long long int rtapi_get_time(void) {
-    long long int res;
-
-    res = flavor_get_time_hook();
-    if (res == -ENOSYS) { // Unimplemented
-        struct timespec ts;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        res = ts.tv_sec * 1000000000LL + ts.tv_nsec;
-    }
-    return res;
+    return flavor_get_time_hook();
 }
 
 long long int rtapi_get_clocks(void) {
     long long int res;
     res = flavor_get_clocks_hook();
+    // WHAT TO DO WITH THIS?, put it into the rt_preempt flavour definition?
     if (res == -ENOSYS) { // Unimplemented
 
 #     ifdef MSR_H_USABLE

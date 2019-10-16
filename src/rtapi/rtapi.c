@@ -164,7 +164,7 @@ int rtapi_module_init()
     rtapi_set_msg_level(ulapi_debug);
 
     // Setting up the environment variable for ULAPI FLAVOUR so the automatic loader will load it
-    // Having some --flavor= in commandline arguments is considered as an error at this point and will
+    // Having some --flavor= in commandline arguments is considered as an ERROR at this point and will
     // be treated as such
     // 12841 is a flavor_ID magic number for ULAPI FLAVOUR
     setenv("FLAVOR", "12841", true);
@@ -231,6 +231,10 @@ int rtapi_module_init()
     rtapi_print_msg(RTAPI_MSG_DBG, "%s:%d  %s %s init\n", LOGTAG, rtapi_instance, get_installed_flavor_name(), GIT_VERSION);
 
     retval = flavor_module_init_hook();
+    if(retval)
+    {
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: RTAPI_MODULE_INIT cannot call FLAVOR MODULE initialization hook, an error returned (%d)->%s\n", retval, strerror(-retval));
+    }
 
     return retval;
 }
@@ -247,7 +251,7 @@ void rtapi_app_exit(void)
     retval = flavor_module_exit_hook();
     if (retval)
     {
-        // An error occured
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: RTAPI_MODULE_EXIT cannot call FLAVOR MODULE exit hook, an error returned (%d)->%s\n", retval, strerror(-retval));
     }
 
     retval = flavor_module_shutdown();
@@ -315,7 +319,7 @@ int rtapi_exit(int module_id)
 #ifdef RTAPI
 int rtapi_task_update_stats(void)
 {
-    return flavor_task_update_stats_hook(NULL);
+    return flavor_task_update_stats_hook();
 }
 #endif
 /***********************************************************************

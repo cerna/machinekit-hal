@@ -16,7 +16,6 @@
 * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ********************************************************************/
 
-
 /***********************************************************************
 *                           RT exception handling                      *
 ************************************************************************/
@@ -31,12 +30,11 @@
 #define MAX_RT_ERRORS 10
 
 static int rtapi_default_rt_exception_handler(int type,
-					      rtapi_exception_detail_t *detail,
-					      rtapi_threadstatus_t *ts);
+											  rtapi_exception_detail_t *detail,
+											  rtapi_threadstatus_t *ts);
 
 // exported symbol within RTAPI
-rtapi_exception_handler_t rt_exception_handler
- = rtapi_default_rt_exception_handler;
+rtapi_exception_handler_t rt_exception_handler = rtapi_default_rt_exception_handler;
 
 // The RTAPI default exception handler -
 // factored out as separate file to ease rolling your own in a component
@@ -51,28 +49,32 @@ rtapi_exception_handler_t rt_exception_handler
 // to override this default handler during module lifetime
 
 static int rtapi_default_rt_exception_handler(int type,
-					      rtapi_exception_detail_t *detail,
-					      rtapi_threadstatus_t *ts)
+											  rtapi_exception_detail_t *detail,
+											  rtapi_threadstatus_t *ts)
 {
-    static int error_printed = 0;
-    int level = (error_printed == 0) ? RTAPI_MSG_ERR : RTAPI_MSG_WARN;
-    int res;
+	static int error_printed = 0;
+	int level = (error_printed == 0) ? RTAPI_MSG_ERR : RTAPI_MSG_WARN;
+	int res = -1;
 
-    if (error_printed < MAX_RT_ERRORS) {
-	error_printed++;
+	if (error_printed < MAX_RT_ERRORS)
+	{
+		error_printed++;
 
-        res = flavor_exception_handler_hook(NULL, type, detail, level);
-        if (res == -ENOSYS) // Unimplemented
-	    rtapi_print_msg(level,
-			    "%d: unspecified exception detail=%p ts=%p",
-			    type, detail, ts);
+		res = flavor_exception_handler_hook(type, detail, level);
+		if (res == -EPERM)
+		{
+			rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: RTAPI_DEFAULT_RT_EXCEPTION_HANDLER call to FLAVOUR MODULE hook not allowed at this time\n");
+		}
+		else if (res < 0)
+		{
+			rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: RTAPI_DEFAULT_RT_EXCEPTION_HANDLER call to FLAVOUR MODULE returned an error (%d)->%s\n", res, strerror(-res));
+		}
 
-	if (error_printed ==  MAX_RT_ERRORS)
-	    rtapi_print_msg(RTAPI_MSG_WARN,
-			    "RTAPI: (further messages will be suppressed)\n");
-    }
-    return 0;
+		if (error_printed == MAX_RT_ERRORS)
+			rtapi_print_msg(RTAPI_MSG_WARN,
+							"RTAPI: (further messages will be suppressed)\n");
+	}
+	return 0;
 }
-
 
 #endif

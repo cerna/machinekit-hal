@@ -2474,10 +2474,17 @@ static int print_heap(char **patterns)
 
 static void print_thread_stats(hal_thread_t *tptr)
 {
+	int retval = -1;
+
     halcmd_output("\nLowlevel thread statistics for '%s':\n\n",
 		  ho_name(tptr));
 
-    flavor_task_print_thread_stats_hook(NULL, tptr->task_id);
+    retval = flavor_task_print_thread_stats_hook(tptr->task_id);
+	if(retval)
+	{
+		halcmd_output("Function 'flavor_task_print_thread_stats_hook()' returned an error code (%d)->%s\n", retval, strerror(-retval));
+	}
+
 }
 
 static int print_thread_entry(hal_object_ptr o, foreach_args_t *args)

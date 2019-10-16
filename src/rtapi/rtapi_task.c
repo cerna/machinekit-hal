@@ -162,9 +162,11 @@ int rtapi_task_new(const rtapi_task_args_t *args) {
        task_id???).  */
     task->state = USERLAND;	// userland threads don't track this
 
-    retval = flavor_task_new_hook(NULL, task, task_id);
-    if (retval == -ENOSYS) // Unimplemented
-        retval = task_id;
+    retval = flavor_task_new_hook(task, task_id);
+    if (retval == -ENOSYS)
+    {
+        ->//AN ERROR OCUURED, SOLVE IT
+    }
 
     rtapi_data->task_count++;
 
@@ -193,7 +195,11 @@ int rtapi_task_delete(int task_id) {
     if (task->state != DELETE_LOCKED)	// we don't already hold mutex
 	rtapi_mutex_get(&(rtapi_data->mutex));
 
-    flavor_task_delete_hook(NULL, task,task_id);
+    retval = flavor_task_delete_hook(task,task_id);
+    if(retval)
+    {
+        ->//AN ERROR OCCURED
+    }
 
     if (task->state != DELETE_LOCKED)	// we don't already hold mutex
 	rtapi_mutex_give(&(rtapi_data->mutex));
@@ -232,10 +238,11 @@ int rtapi_task_start(int task_id, unsigned long int period_nsec) {
 		    task_id, task->name);
     rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: period_nsec: %ld\n", period_nsec);
 
-    return flavor_task_start_hook(NULL, task,task_id);
+    return flavor_task_start_hook(task,task_id);
 }
 
 int rtapi_task_stop(int task_id) {
+    int retval = -1;
     task_data *task;
 
     if(task_id < 0 || task_id >= RTAPI_MAX_TASKS) return -EINVAL;
@@ -246,7 +253,11 @@ int rtapi_task_stop(int task_id) {
     if (task->magic != TASK_MAGIC)
 	return -EINVAL;
 
-    flavor_task_stop_hook(NULL, task,task_id);
+    retval = flavor_task_stop_hook(task_id);
+    if(retval)
+    {
+        ->//AN ERROR OCCURED
+    }
 
     return 0;
 }
@@ -262,11 +273,11 @@ int rtapi_task_pause(int task_id) {
     if (task->magic != TASK_MAGIC)
 	return -EINVAL;
 
-    return flavor_task_pause_hook(NULL, task, task_id);
+    return flavor_task_pause_hook(task_id);
 }
 
 int rtapi_wait(const int flag) {
-    return flavor_task_wait_hook(NULL, flag);
+    return flavor_task_wait_hook(flag);
 }
 
 int rtapi_task_resume(int task_id) {
@@ -280,12 +291,12 @@ int rtapi_task_resume(int task_id) {
     if (task->magic != TASK_MAGIC)
 	return -EINVAL;
 
-    return flavor_task_resume_hook(NULL, task, task_id);
+    return flavor_task_resume_hook(task_id);
 }
 
 
 int rtapi_task_self(void) {
-    return flavor_task_self_hook(NULL);
+    return flavor_task_self_hook();
 }
 
 long long rtapi_task_pll_get_reference(void) {
