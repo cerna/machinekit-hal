@@ -1741,6 +1741,8 @@ AH_TOP([/********************************************************************
 
 #define MAX_FLAVOR_NAME_LEN 20
 
+#define LIMIT_FLAVOR_LIBRARIES_FOUND 50
+
 ])
 
 AH_VERBATIM([_GNU_SOURCE],
