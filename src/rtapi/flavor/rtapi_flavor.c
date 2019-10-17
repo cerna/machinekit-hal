@@ -120,7 +120,7 @@ static bool add_flavor_library_to_list(flavor_library *new_node)
 
 static void flavor_library_free(flavor_library *to_free)
 {
-    free(to_free->library_path);
+    free((char *)to_free->library_path);
     free(to_free);
 }
 
