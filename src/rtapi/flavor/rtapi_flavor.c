@@ -212,7 +212,7 @@ static void merge_sort(flavor_library **local_head, flavor_library_relation orde
         return;
     }
 
-    halve_set(local_head, &A_set, &B_set);
+    halve_set(*local_head, &A_set, &B_set);
 
     merge_sort(&A_set, ordered_pair_function);
     merge_sort(&B_set, ordered_pair_function);
