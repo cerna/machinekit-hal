@@ -340,7 +340,7 @@ static bool flavor_library_factory(const char *path, const char *name, unsigned 
             .flags = flags},
         .library_path = path_alloc,
         .next = NULL};
-    strncpy(library.compile_time_metadata.name, name, MEMBER_SIZEOF(flavor_cold_metadata, name));
+    strncpy((char *)library.compile_time_metadata.name, name, MEMBER_SIZEOF(flavor_cold_metadata, name));
 
     if (!add_flavor_library_to_list(&library))
     {
