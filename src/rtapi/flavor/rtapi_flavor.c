@@ -71,7 +71,7 @@ int flavor_mocking_err = 0; // Pass error to tests
 // Global access structure for storing pointers to control structures of currently installed
 // FLAVOUR module
 flavor_access_structure global_flavor_access_structure = {0};
-flavor_access_structure_ptr const global_flavor_access_structure_ptr = &global_flavor_access_structure;
+flavor_access_structure_ptr global_flavor_access_structure_ptr = &global_flavor_access_structure;
 // Local solib handle of currently open flavor
 static void *flavor_handle = NULL;
 
