@@ -124,6 +124,8 @@ static void flavor_library_free(flavor_library *to_free)
     free(to_free);
 }
 
+// This has to be called as a last thing, pretty much before unloading of FLAVOUR MODULE, because the objects allocated in this memory
+// are used in the all other operations of this code
 static void delete_whole_list(void)
 {
     known_libraries_head = NULL;
@@ -300,7 +302,7 @@ void signal_if_excessive_number_of_flavor_libraries_found(void)
     }
 }
 
-static bool flavor_library_factory(const char *path, const char *name, unsigned int id, unsigned int weight, unsigned int magic, unsigned int flags)
+static bool flavor_library_factory(const char *path, char *name, unsigned int id, unsigned int weight, unsigned int magic, unsigned int flags, void* cloobj)
 {
     signal_if_excessive_number_of_flavor_libraries_found();
 
@@ -450,7 +452,7 @@ static bool execute_checked_uninstall_of_flavor(void)
         if (global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor != NULL)
         {
             //Somewhere error happened (incorrect flavour library), signal and so
-            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR library loader: Library '%' did not correctly unloaded flavor_descriptor.\n", flavor_descriptor->name);
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR library loader: Library '%s' did not correctly unloaded flavor_descriptor.\n", global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor->name);
             global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor = NULL;
         }
         return true;
@@ -479,7 +481,7 @@ static bool execute_checked_install_of_flavor(flavor_library *library_to_install
                 (void)execute_checked_uninstall_of_flavor();
                 return false;
             }
-            global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor = library_to_install->compile_time_metadata;
+            global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor = &(library_to_install->compile_time_metadata);
             // Flavor was successfully installed and FD was registered
             return true;
         }
@@ -487,21 +489,17 @@ static bool execute_checked_install_of_flavor(flavor_library *library_to_install
         //Can library in constructor dlopen itself and hold that way a reference?
         return false;
     }
-    rtspi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR library loader: There is already flavour API library '%s' installed. You cannot install more than one library at a time.\n", flavor_descriptor->name);
+    rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR library loader: There is already flavour API library '%s' installed. You cannot install more than one library at a time.\n", global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor->name);
     return false;
 }
 
-static bool install_flavor_by_name(const char *name)
+static int discover_default_flavor_modules(void)
 {
-    (void)discover_default_flavor_modules();
-    for (flavor_library *i = known_libraries_head; i; i = i->next)
+    if (known_libraries_head)
     {
-        if (strcasecmp(i->compile_time_metadata.name, name) == 0)
-        {
-            return execute_checked_install_of_flavor(i);
-        }
+        return 0; // So far we want this function to run only once, change in the future possible
     }
-    return false;
+    return get_paths_of_library_module("FLAVOR_LIB_DIR", search_directory_for_flavor_modules, NULL);
 }
 
 static bool LAMBDA_is_machinekit_flavor_solib_v1(const char *const path, size_t size_of_input, void *input, flavor_module_v1_found_callback flavor_find)
@@ -583,13 +581,17 @@ static bool install_default_flavor(void)
     return false;
 }
 
-static int discover_default_flavor_modules(void)
+static bool install_flavor_by_name(const char *name)
 {
-    if (known_libraries_head)
+    (void)discover_default_flavor_modules();
+    for (flavor_library *i = known_libraries_head; i; i = i->next)
     {
-        return 0; // So far we want this function to run only once, change in the future possible
+        if (strcasecmp(i->compile_time_metadata.name, name) == 0)
+        {
+            return execute_checked_install_of_flavor(i);
+        }
     }
-    return get_paths_of_library_module("FLAVOR_LIB_DIR", search_directory_for_flavor_modules, NULL);
+    return false;
 }
 
 /* ========== START FLAVOUR module user input functions ========== */
@@ -636,7 +638,7 @@ static int parse_flavor_data_from_string(char *input_string, flavor_input_data_p
     if (errno == ERANGE)
     {
         // User passed negative value, that's an error
-        rtapi_msg_prinf(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed numeric value as a flavor_id, which is outside the allowed range\n");
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed numeric value as a flavor_id, which is outside the allowed range\n");
         retval = -ERANGE;
         goto end;
     }
@@ -648,7 +650,7 @@ static int parse_flavor_data_from_string(char *input_string, flavor_input_data_p
         if (*input_string == '-')
         {
             // User passed negative value, that's an error
-            rtapi_msg_prinf(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed negative value as a flavor_id, value: %s\n", input_string);
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed negative value as a flavor_id, value: %s\n", input_string);
             retval = -EINVAL;
             goto end;
         }
@@ -656,20 +658,20 @@ static int parse_flavor_data_from_string(char *input_string, flavor_input_data_p
         if (flavor_id > UINT_MAX)
         {
             // User passed value too high, that's an error
-            rtapi_msg_prinf(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed value too high as a flavor_id, value: %s, limit: %u\n", input_string, UINT_MAX);
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed value too high as a flavor_id, value: %s, limit: %u\n", input_string, UINT_MAX);
             retval = -EINVAL;
             goto end;
         }
         if (flavor_id == 0)
         {
             // User passed value 0, that's an error
-            rtapi_msg_prinf(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed 0 as a value as a flavor_id, value 0 is not valid\n");
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed 0 as a value as a flavor_id, value 0 is not valid\n");
             retval = -EINVAL;
             goto end;
         }
         output_tuple->data.flavor_id = (unsigned int)flavor_id;
         output_tuple->state = FLAVOR_ID_SET;
-        rtapi_msg_prinf(RTAPI_MSG_DBG, "RTAPI PARSE_DATA_FROM_STRING found a flavor_ID number %u\n", (unsigned int)flavor_id);
+        rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI PARSE_DATA_FROM_STRING found a flavor_ID number %u\n", (unsigned int)flavor_id);
         goto success;
     }
 
@@ -680,12 +682,12 @@ static int parse_flavor_data_from_string(char *input_string, flavor_input_data_p
         if (realpath(input_string, output_tuple->data.flavor_path))
         {
             // No error occured, we now should have absolute path copied into output_tuple
-            rtapi_msg_prinf(RTAPI_MSG_DBG, "RTAPI PARSE_DATA_FROM_STRING found a flavor PATH  %s\n", output_tuple->data.flavor_path);
+            rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI PARSE_DATA_FROM_STRING found a flavor PATH  %s\n", output_tuple->data.flavor_path);
             output_tuple->state = FLAVOR_PATH_SET;
             goto success;
         }
         int error = errno;
-        rtapi_msg_prinf(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING cout not get REALPATH on file: %s, error (%d)->%s\n", input_string, error, strerror(error));
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING cout not get REALPATH on file: %s, error (%d)->%s\n", input_string, error, strerror(error));
         retval = -EINVAL;
         goto end;
     }
@@ -694,14 +696,14 @@ static int parse_flavor_data_from_string(char *input_string, flavor_input_data_p
     if (strlen(input_string) > MAX_FLAVOR_NAME_LEN)
     {
         // User passed value too long, that's an error
-        rtapi_msg_prinf(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed too long value for flavor name '%s', passed string lenght: %d, maximum lenght: %d\n", input_string, strlen(input_string), MAX_FLAVOR_NAME_LEN);
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI PARSE_DATA_FROM_STRING was passed too long value for flavor name '%s', passed string lenght: %ld, maximum lenght: %d\n", input_string, strlen(input_string), MAX_FLAVOR_NAME_LEN);
         retval = -EINVAL;
         goto end;
     }
     // Zero signals that the value is not used, flavor_id cannot be 0
     strncpy(output_tuple->data.flavor_name, input_string, sizeof output_tuple->data.flavor_name);
     output_tuple->state = FLAVOR_NAME_SET;
-    rtapi_msg_prinf(RTAPI_MSG_DBG, "RTAPI PARSE_DATA_FROM_STRING found a flavor name  %s\n", output_tuple->data.flavor_name);
+    rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI PARSE_DATA_FROM_STRING found a flavor name  %s\n", output_tuple->data.flavor_name);
 
 success:
     retval = 0;
@@ -842,7 +844,7 @@ int get_names_of_known_flavor_modules(char *output_string_map)
     {
         // An error occured when mallocing new string map
         int error = errno;
-        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: GET_NAME_OF_KNOWN_MODULES encountered an error when mallocing %d chars for output_string_map with error (%d)->%s\n", string_lenght, error, strerror(error));
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: GET_NAME_OF_KNOWN_MODULES encountered an error when mallocing %ld chars for output_string_map with error (%d)->%s\n", string_lenght, error, strerror(error));
         goto end;
     }
 

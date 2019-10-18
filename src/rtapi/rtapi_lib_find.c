@@ -61,6 +61,7 @@
 
 bool is_machinekit_flavor_solib_v1(const char *const real_path, size_t size_of_input, void *input, flavor_module_v1_found_callback flavor_find, void *cloobj)
 {
+    assert(5<10);
     // In this function, we are assuming and hoping that libELF will translate the payload
     int retval = 0;
     unsigned int api;

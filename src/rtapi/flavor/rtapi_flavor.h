@@ -160,11 +160,11 @@ extern "C"
 
     /* ========== START FLAVOUR module hot initialization and shutdown functions ========== */
     // Main point function by which ready registered FLAVOUR module becomes operational
-    extern void arm_flavor(flavor_runtime_business_ptr descriptor_to_arm);
+    extern void arm_flavor(flavor_hot_metadata_ptr descriptor_to_arm);
 
     // Main point function by which operational (and registered) FLAVOUR module can
     // change state to hot ready
-    extern void yield_flavor(flavor_runtime_business_ptr descriptor_to_yield);
+    extern void yield_flavor(flavor_hot_metadata_ptr descriptor_to_yield);
     /* ========== END FLAVOUR module hot initialization and shutdown functions ========== */
 
     /* ========== START FLAVOUR module global access structure ========== */
