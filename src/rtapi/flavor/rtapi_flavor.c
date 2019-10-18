@@ -827,7 +827,7 @@ int get_names_of_known_flavor_modules(char *output_string_map)
     size_t delta = 0;
     char *delimiter = NULL;
 
-    if (!output_string_map)
+    if (output_string_map)
     {
         // The output_string_map pointer is not set to NULL
         rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: GET_NAME_OF_KNOWN_MODULES was passed NULL pointer as an output_string_map\n");
