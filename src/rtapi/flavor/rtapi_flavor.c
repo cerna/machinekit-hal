@@ -820,14 +820,14 @@ end:
  * These functions are also exported by the EXPORT_SYMBOL MACRO
 */
 
-int get_names_of_known_flavor_modules(char *output_string_map)
+int get_names_of_known_flavor_modules(char **output_string_map)
 {
     int string_counter = 0;
     size_t string_lenght = 0;
     size_t delta = 0;
     char *delimiter = NULL;
 
-    if (output_string_map)
+    if (*output_string_map)
     {
         // The output_string_map pointer is not set to NULL
         rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: GET_NAME_OF_KNOWN_MODULES was passed NULL pointer as an output_string_map\n");
@@ -839,8 +839,8 @@ int get_names_of_known_flavor_modules(char *output_string_map)
         string_lenght += strlen(index->compile_time_metadata.name) + 1;
     }
 
-    output_string_map = malloc(string_lenght);
-    if (!output_string_map)
+    *output_string_map = malloc(string_lenght);
+    if (!(*output_string_map))
     {
         // An error occured when mallocing new string map
         int error = errno;
@@ -848,7 +848,7 @@ int get_names_of_known_flavor_modules(char *output_string_map)
         goto end;
     }
 
-    delimiter = output_string_map;
+    delimiter = *output_string_map;
     for (flavor_library *index; index; index = index->next)
     {
         delta = strlen(index->compile_time_metadata.name) + 1;
