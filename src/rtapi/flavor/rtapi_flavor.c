@@ -82,7 +82,7 @@ static void *flavor_handle = NULL;
 
 static flavor_library *known_libraries_head = NULL;
 
-static bool add_flavor_library_to_list(flavor_library *new_node)
+static bool priority_insert_on_weight(flavor_library *new_node)
 {
     flavor_library *new_library = NULL;
 
@@ -105,10 +105,24 @@ static bool add_flavor_library_to_list(flavor_library *new_node)
         flavor_library *previous = NULL;
         while (current)
         {
+            if (new_library->compile_time_metadata.weight > current->compile_time_metadata.weight)
+            {
+                break;
+            }
             previous = current;
             current = current->next;
         }
-        previous->next = known_libraries_head;
+        if (previous)
+        {
+            previous->next = new_library;
+            new_library->next = current;
+        }
+        else
+        {
+            flavor_library *temporary_head = known_libraries_head;
+            known_libraries_head = new_library;
+            new_library->next = temporary_head;
+        }
     }
     else
     {
@@ -120,7 +134,7 @@ static bool add_flavor_library_to_list(flavor_library *new_node)
 
 static void flavor_library_free(flavor_library *to_free)
 {
-    free((char *)to_free->library_path);
+    free(to_free->library_path);
     free(to_free);
 }
 
@@ -128,108 +142,12 @@ static void flavor_library_free(flavor_library *to_free)
 // are used in the all other operations of this code
 static void delete_whole_list(void)
 {
-    known_libraries_head = NULL;
-    for (flavor_library *head = known_libraries_head, *next = NULL; head; head = next)
-    {
-        next = head->next;
-        flavor_library_free(head);
-    }
-}
-
-// VERY SIMPLE flavour library linked list merge sorting functionality
-typedef bool (*flavor_library_relation)(flavor_library *A_operand, flavor_library *B_operand);
-
-static void halve_set(flavor_library *local_head, flavor_library **first_head, flavor_library **second_head)
-{
-    flavor_library *sloth = NULL;
-    flavor_library *cheetah = NULL;
-
-    if (!local_head)
-    {
-        return;
-    }
-
-    sloth = local_head;
-    cheetah = sloth->next;
-
-    while (cheetah)
-    {
-        cheetah = cheetah->next;
-        if (cheetah)
-        {
-            sloth = sloth->next;
-            cheetah = cheetah->next;
-        }
-    }
-
-    *first_head = local_head;
-    *second_head = sloth->next;
-    sloth->next = NULL;
-}
-
-static flavor_library *merge_sorted(flavor_library *A_set, flavor_library *B_set, flavor_library_relation ordered_pair_function)
-{
-    flavor_library *retval = NULL;
-
-    if (!A_set)
-    {
-        return (B_set);
-    }
-    if (!B_set)
-    {
-        return (A_set);
-    }
-
-    if (!ordered_pair_function)
-    {
-        return NULL;
-    }
-
-    if (ordered_pair_function(A_set, B_set))
-    {
-        retval = A_set;
-        retval->next = merge_sorted(A_set->next, B_set, ordered_pair_function);
-    }
-    else
-    {
-        retval = B_set;
-        retval->next = merge_sorted(A_set, B_set->next, ordered_pair_function);
-    }
-
-    return retval;
-}
-
-static void merge_sort(flavor_library **local_head, flavor_library_relation ordered_pair_function)
-{
-    flavor_library *A_set = NULL;
-    flavor_library *B_set = NULL;
-
-    if (!ordered_pair_function)
-    {
-        return;
-    }
-
-    if (!(*local_head) || !((*local_head)->next))
-    {
-        return;
-    }
-
-    halve_set(*local_head, &A_set, &B_set);
-
-    merge_sort(&A_set, ordered_pair_function);
-    merge_sort(&B_set, ordered_pair_function);
-
-    *local_head = merge_sorted(A_set, B_set, ordered_pair_function);
-}
-
-static void sort_list(flavor_library_relation ordered_pair_function)
-{
     flavor_library *local_head = known_libraries_head;
-
     known_libraries_head = NULL;
-    merge_sort(&local_head, ordered_pair_function);
-
-    known_libraries_head = local_head;
+    for (; local_head; local_head = local_head->next)
+    {
+        flavor_library_free(local_head);
+    }
 }
 
 /* ========== END FLAVOUR module VERY SIMPLE flavour library linked list ========== */
@@ -302,7 +220,7 @@ void signal_if_excessive_number_of_flavor_libraries_found(void)
     }
 }
 
-static bool flavor_library_factory(const char *path, char *name, unsigned int id, unsigned int weight, unsigned int magic, unsigned int flags, void* cloobj)
+static bool flavor_library_factory(const char *path, char *name, unsigned int id, unsigned int weight, unsigned int magic, unsigned int flags, void *cloobj)
 {
     signal_if_excessive_number_of_flavor_libraries_found();
 
@@ -344,54 +262,60 @@ static bool flavor_library_factory(const char *path, char *name, unsigned int id
         .next = NULL};
     strncpy((char *)library.compile_time_metadata.name, name, MEMBER_SIZEOF(flavor_cold_metadata, name));
 
-    if (!add_flavor_library_to_list(&library))
-    {
-        return true;
-    }
-    return false;
+    return priority_insert_on_weight(&library);
 }
 
 /* ========== START FLAVOUR module registration and unregistration functions ========== */
 // Point of contact with flavour API library
+// This function is called from FLAVOUR LIBRARY MODULE
 void register_flavor(flavor_cold_metadata_ptr descriptor_to_register)
 {
     hal_u32_t temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));
-    if (~temp_state & FLAVOR_STATE_INITIALIZED)
+    if (!(~temp_state & FLAVOR_STATE_INITIALIZED))
     {
         global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor = descriptor_to_register;
-        rtapi_store_u32(&(global_flavor_access_structure_ptr->state), (temp_state | FLAVOR_STATE_INSTALL));
+        // WE are not changing the global state here, because this decision is for rtapi_flavor RTAPI to rule
     }
 }
+
 // Point of contact with flavour API library
+// This function is called from FLAVOUR LIBRARY MODULE
 void unregister_flavor(flavor_cold_metadata_ptr descriptor_to_unregister)
 {
     hal_u32_t temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));
-    if (~temp_state & FLAVOR_STATE_INSTALLED && global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor == descriptor_to_unregister)
+    if (!(~temp_state & FLAVOR_STATE_INSTALLED) && global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor == descriptor_to_unregister)
     {
         global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor = NULL;
-        rtapi_store_u32(&(global_flavor_access_structure_ptr->state), (temp_state & ~FLAVOR_STATE_INSTALL));
+        // WE are not changing the global state here, because this decision is for rtapi_flavor RTAPI to rule
     }
 }
 /* ========== END FLAVOUR module registration and unregistration functions ========== */
 
 /* ========== START FLAVOUR module arming and yielding functions ========== */
 // Point of contact with flavour API library
+// This function is called from FLAVOUR LIBRARY MODULE
 void arm_flavor(flavor_hot_metadata_ptr descriptor_to_arm)
 {
     hal_u32_t temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));
-    if (~temp_state & FLAVOR_STATE_INSTALLED)
+    if (!(~temp_state & FLAVOR_STATE_INSTALLED))
     {
         global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor = descriptor_to_arm;
+        // WE are changing the global state here as this decision is wholly in competence of FLAVOUR LIBRARY MODULE
+        // and by calling this function, it signalling the rtapi_flavor RTAPI library to do the change
         rtapi_store_u32(&(global_flavor_access_structure_ptr->state), (temp_state | FLAVOR_STATE_ARM));
     }
 }
+
 // Point of contact with flavour API library
+// This function is called from FLAVOUR LIBRARY MODULE
 void yield_flavor(flavor_hot_metadata_ptr descriptor_to_yield)
 {
     hal_u32_t temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));
-    if (~temp_state & FLAVOR_STATE_ARMED && global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor == descriptor_to_yield)
+    if ((~temp_state & FLAVOR_STATE_ARMED) && global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor == descriptor_to_yield)
     {
         global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor = NULL;
+        // WE are changing the global state here as this decision is wholly in competence of FLAVOUR LIBRARY MODULE
+        // and by calling this function, it signalling the rtapi_flavor RTAPI library to do the change
         rtapi_store_u32(&(global_flavor_access_structure_ptr->state), (temp_state & ~FLAVOR_STATE_ARM));
     }
 }
@@ -403,10 +327,10 @@ void yield_flavor(flavor_hot_metadata_ptr descriptor_to_yield)
 // API library
 static bool install_flavor_solib(const char *solib_path)
 {
-    if (flavor_handle == NULL)
+    if (!flavor_handle)
     {
         flavor_handle = dlopen(solib_path, RTLD_NOW | RTLD_LOCAL);
-        if (flavor_handle == NULL)
+        if (!flavor_handle)
         {
             char *error = dlerror();
             rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: Error occured when trying to load flavor: %s->%s", solib_path, error);
@@ -421,9 +345,9 @@ static bool install_flavor_solib(const char *solib_path)
 // manipulation with .so library file, all access should go directly though this functionality
 static bool uninstall_flavor_solib(void)
 {
-    if (flavor_handle != NULL)
+    if (flavor_handle)
     {
-        int retval;
+        int retval = -1;
         retval = dlclose(flavor_handle);
         if (retval)
         {
@@ -441,65 +365,77 @@ static bool uninstall_flavor_solib(void)
 
 static bool execute_checked_uninstall_of_flavor(void)
 {
-    // We are not checking the global_flavor_access_structure_ptr because we are using this function both for unistall of
-    // correctly installed flavour library (FD populated) and for unload of incorrectly installed flavour
-    // library (flavor_handle populated but FD unpopulated)
+    // WE are allowing the call only in STATEs INITIALIZED, NOT EXITED and NOT ARMED, i.e. we don't care
+    // if the state is INSTALLED or NOT INSTALLED, because at the end of this function call the state will be NOT INSTALLED
+    hal_u32_t temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));
+    if (!(temp_state & ~(FLAVOR_STATE_INSTALLED)))
+    {
+        rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOR library loader: Call to EXECUTE_CHECKED_UNINSTALL_OF_FLAVOR is not allowed in state '%d'.\n", temp_state);
+        return false;
+    }
+
     if (uninstall_flavor_solib())
     {
         // FH was populated and now is unpopulated
         // Flavor solib should run it's descructor code and call unregister flavor,
         // if the solib was not dlopened multiple times, which we definitely do not want
-        if (global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor != NULL)
+        if (global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor)
         {
-            //Somewhere error happened (incorrect flavour library), signal and so
+            //Somewhere an error happened (incorrect flavour library), signal and so
             rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR library loader: Library '%s' did not correctly unloaded flavor_descriptor.\n", global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor->name);
             global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor = NULL;
         }
+        temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));
+        rtapi_store_u32(&(global_flavor_access_structure_ptr->state), (temp_state & ~FLAVOR_STATE_INSTALL));
         return true;
     }
-    // Nothing is actually installed
-    // and the global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor is still DEFINITELLY null, if not, it's my programming, it is fucked up
-    return false;
-}
-// +++better check the logic flow, it's kind of fishy+++
-static bool execute_checked_install_of_flavor(flavor_library *library_to_install)
-{
-    if (global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor == NULL)
-    {
-        if (install_flavor_solib(library_to_install->library_path))
-        {
-            if (global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor == NULL)
-            {
-                // Hopefully should also check situation when developer mix the constructor
-                // and destructor
-                (void)execute_checked_uninstall_of_flavor();
-                return false;
-            }
-            // Now we need to verify the installed FLAVOUR module
-            if (!is_flavor_hot_metadata_valid(library_to_install->compile_time_metadata.name, library_to_install->library_path, global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor))
-            {
-                (void)execute_checked_uninstall_of_flavor();
-                return false;
-            }
-            global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor = &(library_to_install->compile_time_metadata);
-            // Flavor was successfully installed and FD was registered
-            return true;
-        }
-        //Something installed but should not be installed or loading error
-        //Can library in constructor dlopen itself and hold that way a reference?
-        return false;
-    }
-    rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR library loader: There is already flavour API library '%s' installed. You cannot install more than one library at a time.\n", global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor->name);
+    rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOR library loader: Call to EXECUTE_CHECKED_UNINSTALL_OF_FLAVOR was performed when no FLAVOUR MODULE LIBRARY is loaded. This signals fault in higher logic. The current status is '%d'.\n", temp_state);
     return false;
 }
 
-static int discover_default_flavor_modules(void)
+static bool execute_checked_install_of_flavor(flavor_library *library_to_install)
 {
-    if (known_libraries_head)
+    hal_u32_t temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));
+    if (!(~temp_state & FLAVOR_STATE_INITIALIZED))
     {
-        return 0; // So far we want this function to run only once, change in the future possible
+        rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOR library loader: Call to EXECUTE_CHECKED_INSTALL_OF_FLAVOR is not allowed in state '%d'.\n", temp_state);
+        if (temp_state & FLAVOR_STATE_INSTALL)
+        {
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR library loader: There is already flavour API library '%s' installed. You cannot install more than one library at a time.\n", global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor->name);
+        }
+        return false;
     }
-    return get_paths_of_library_module("FLAVOR_LIB_DIR", search_directory_for_flavor_modules, NULL);
+
+    if (install_flavor_solib(library_to_install->library_path))
+    {
+        if (!(global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor))
+        {
+            // Hopefully should also check situation when developer mix the constructor
+            // and destructor
+            if (!execute_checked_uninstall_of_flavor())
+            {
+                rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOR library loader: EXECUTE_CHECKED_INSTALL_OF_FLAVOR, failed automatic install of FLAVOR module could not uninstall flavor module.\n");
+            }
+            return false;
+        }
+        // Now we need to verify the installed FLAVOUR module
+        if (!is_flavor_hot_metadata_valid(library_to_install->compile_time_metadata.name, library_to_install->library_path, global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor))
+        {
+            if (!execute_checked_uninstall_of_flavor())
+            {
+                rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOR library loader: EXECUTE_CHECKED_INSTALL_OF_FLAVOR, failed validation of FLAVOR module could not uninstall flavor module.\n");
+            }
+            return false;
+        }
+        global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor = &(library_to_install->compile_time_metadata);
+        // Flavor was successfully installed and FD was registered
+        temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));
+        rtapi_store_u32(&(global_flavor_access_structure_ptr->state), (temp_state | FLAVOR_STATE_INSTALL));
+        return true;
+    }
+    //Something installed but should not be installed or loading error
+    rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR library loader: There is an error trying to load shared library in NOT INSTALLED state.\n");
+    return false;
 }
 
 static bool LAMBDA_is_machinekit_flavor_solib_v1(const char *const path, size_t size_of_input, void *input, flavor_module_v1_found_callback flavor_find)
@@ -524,14 +460,27 @@ static int search_mountpoint_for_flavor_modules(const char *const path)
     return for_each_node(path, search_mountpoint_for_flavor_modules, LAMBDA_file_find, NULL);
 }
 
+static int discover_default_flavor_modules(void)
+{
+    if (known_libraries_head)
+    {
+        return 0; // So far we want this function to run only once, change in the future possible
+    }
+    return get_paths_of_library_module("FLAVOR_LIB_DIR", search_directory_for_flavor_modules, NULL);
+}
+
 static bool install_flavor_by_path(const char *const path)
 {
-    LAMBDA_file_find(path);
-    for (flavor_library *i = known_libraries_head; i; i = i->next)
+    if (LAMBDA_file_find(path))
     {
-        if (strcmp(i->library_path, path) == 0)
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR library loader: INSTALL_FLAVOR_BYT_PATH could not find flavor module at specified path '%s'.\n", path);
+    }
+
+    for (flavor_library *index = known_libraries_head; index; index = index->next)
+    {
+        if (strcmp(index->library_path, path) == 0)
         {
-            return execute_checked_install_of_flavor(i);
+            return execute_checked_install_of_flavor(index);
         }
     }
     return false;
@@ -539,58 +488,59 @@ static bool install_flavor_by_path(const char *const path)
 
 static bool install_flavor_by_id(unsigned int id)
 {
-    (void)discover_default_flavor_modules();
+    int found = 0;
 
-    for (flavor_library *i = known_libraries_head; i; i = i->next)
+    found = discover_default_flavor_modules();
+    rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOUR library loader: INSTALL_FLAVOR_BY_ID function found %d flavor library modules.\n", found);
+
+    for (flavor_library *index = known_libraries_head; index; index = index->next)
     {
-        if (i->compile_time_metadata.id == id)
+        if (index->compile_time_metadata.id == id)
         {
-            return execute_checked_install_of_flavor(i);
+            return execute_checked_install_of_flavor(index);
         }
     }
+    rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR library loader: Library with specified ID '%d' could not be installed. Library HAS TO BE in standard location for this function to find.\n", id);
     return false;
-}
-
-static bool LAMBDA_flavor_library_weight_relation(flavor_library *A_operand, flavor_library *B_operand)
-{
-    return A_operand->compile_time_metadata.weight >= B_operand->compile_time_metadata.weight ? true : false;
-}
-
-static void sort_known_libraries_list_by_weight(void)
-{
-    sort_list(LAMBDA_flavor_library_weight_relation);
 }
 
 static bool install_default_flavor(void)
 {
     unsigned int counter = 0;
+    int found = 0;
 
-    (void)discover_default_flavor_modules();
-    sort_known_libraries_list_by_weight();
-    for (flavor_library *i = known_libraries_head; i; i = i->next)
+    found = discover_default_flavor_modules();
+    rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOUR library loader: INSTALL_DEFAULT_FLAVOR function found %d flavor library modules.\n", found);
+
+    for (flavor_library *index = known_libraries_head; index; index = index->next)
     {
         counter++;
-        rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOUR library loader: Trying to install flavour library module '%s'.\n", i->compile_time_metadata.name);
-        if (execute_checked_install_of_flavor(i))
+        rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOUR library loader: Trying to install flavour library module '%s'.\n", index->compile_time_metadata.name);
+        if (execute_checked_install_of_flavor(index))
         {
-            rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOUR library loader: Flavour library module '%s' installed.\n", i->compile_time_metadata.name);
+            rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOUR library loader: Flavour library module '%s' installed.\n", index->compile_time_metadata.name);
             return true;
         }
     }
-    rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR library loader: Not one flavour module could be installed (Tested %d modules). Have you installed at leas one? Maybe try to set the path directly.\n", counter);
+    rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR library loader: Not one flavour module could be installed (Tested %d modules). Have you installed at least one? Maybe try to set the path directly.\n", counter);
     return false;
 }
 
 static bool install_flavor_by_name(const char *name)
 {
-    (void)discover_default_flavor_modules();
-    for (flavor_library *i = known_libraries_head; i; i = i->next)
+    int found = 0;
+
+    found = discover_default_flavor_modules();
+    rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOUR library loader: INSTALL_FLAVOR_BY_NAME function found %d flavor library modules.\n", found);
+
+    for (flavor_library *index = known_libraries_head; index; index = index->next)
     {
-        if (strcasecmp(i->compile_time_metadata.name, name) == 0)
+        if (strcasecmp(index->compile_time_metadata.name, name) == 0)
         {
-            return execute_checked_install_of_flavor(i);
+            return execute_checked_install_of_flavor(index);
         }
     }
+    rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR library loader: Library with specified name '%s' could not be installed. Library HAS TO BE in standard location for this function to find.\n", name);
     return false;
 }
 
@@ -620,7 +570,7 @@ static int parse_flavor_data_from_string(char *input_string, flavor_input_data_p
 {
     char *delimiter = NULL;
     int retval = -1;
-    // Flavor_ID value 0 is invalid
+    // Flavor ID value 0 is invalid
     uintmax_t flavor_id = 0;
 
     if (!output_tuple)
@@ -863,8 +813,8 @@ end:
 
 int flavor_module_startup(void)
 {
-    flavor_input_data_processed flavor_information_cmdline;
-    flavor_input_data_processed flavor_information_environment;
+    flavor_input_data_processed flavor_information_cmdline = {0};
+    flavor_input_data_processed flavor_information_environment = {0};
     flavor_input_data_processed *valid_data = NULL;
     int retval_cmdline = -1;
     int retval_environment = -1;
