@@ -238,7 +238,7 @@ int flavor_feature(int feature)
     return (f->flags & feature);
 }*/
 
-/* ========== START Accessor function implementations between RTAPI and FLAVOUR MODULE========== */
+/* ========== END Accessor function implementations between RTAPI and FLAVOUR MODULE========== */
 
 #ifdef RTAPI
 EXPORT_SYMBOL(flavor_get_installed_name);
