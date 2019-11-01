@@ -152,25 +152,24 @@ extern "C"
 
     /* ========== START FLAVOUR module constructor and destructor functions ========== */
     // Main point function by which new flavor module can register itself
-    extern void register_flavor(flavor_cold_metadata_ptr descriptor_to_register);
+    extern void register_flavor(flavor_hot_metadata_ptr descriptor_to_register);
 
     // Main point function by which registered flavor module can unregister itself
-    extern void unregister_flavor(flavor_cold_metadata_ptr descriptor_to_unregister);
+    extern void unregister_flavor(flavor_hot_metadata_ptr descriptor_to_unregister);
     /* ========== END FLAVOUR module constructor and destructor functions ========== */
 
     /* ========== START FLAVOUR module hot initialization and shutdown functions ========== */
     // Main point function by which ready registered FLAVOUR module becomes operational
-    extern void arm_flavor(flavor_hot_metadata_ptr descriptor_to_arm);
+    extern int arm_flavor(flavor_runtime_business_ptr descriptor_to_arm);
 
     // Main point function by which operational (and registered) FLAVOUR module can
     // change state to hot ready
-    extern void yield_flavor(flavor_hot_metadata_ptr descriptor_to_yield);
+    extern int yield_flavor(flavor_runtime_business_ptr descriptor_to_yield);
     /* ========== END FLAVOUR module hot initialization and shutdown functions ========== */
 
     /* ========== START FLAVOUR module global access structure ========== */
     struct flavor_access_structure
     {
-        // Use atomics type?
         hal_u32_t state;
         flavor_cold_metadata_ptr flavor_module_cold_metadata_descriptor;
         /* The global flavour run-time metadata struct
@@ -198,7 +197,7 @@ extern "C"
     /* ========== END FLAVOUR module global access structure ========== */
 
     // Předělat
-    const char *get_installed_flavor_name();
+    const char *const flavor_get_installed_name();
     /*// Wrappers around flavor_descriptor
     typedef const char *(flavor_names_t)(flavor_descriptor_ptr **fd);
     extern flavor_names_t flavor_names;

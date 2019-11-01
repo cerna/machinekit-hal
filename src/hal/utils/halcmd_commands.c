@@ -2549,7 +2549,7 @@ static void print_thread_info(char **patterns)
 {
     if (scriptmode == 0) {
 	halcmd_output("Realtime Threads (flavor: %s, currently %s) :\n",
-		      flavor_name(NULL),
+		      flavor_get_installed_name(),
 		      (hal_data->threads_running > 0) ? "running" : "stopped");
 	halcmd_output("     Period  FP CPU   Name                                          "
 		      "Time  Max-Time util  max  jitter-95%%     flags\n");

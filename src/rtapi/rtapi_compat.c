@@ -343,7 +343,6 @@ int get_elf_section(const char *const fname, const char *section_name, void **de
 
     if (realpath(fname, file_real_path) == NULL)
     {
-        int error = errno;
         perror("rtapi_compat.c: could not resolve realpath of file ELF file\n");
         goto end;
     }

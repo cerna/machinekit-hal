@@ -134,7 +134,7 @@ static bool priority_insert_on_weight(flavor_library *new_node)
 
 static void flavor_library_free(flavor_library *to_free)
 {
-    free(to_free->library_path);
+    free((char *)to_free->library_path);
     free(to_free);
 }
 
@@ -165,43 +165,46 @@ static inline bool check_function_pointer_validity(void *function_ptr)
     return function_ptr ? true : false;
 }
 #define WRAPPER_HELPER(string) string
-#define CHECK_FOR_FUNCTION(structure, function_name)                                                                                                                                                            \
-    do                                                                                                                                                                                                          \
-    {                                                                                                                                                                                                           \
-        if (!check_function_pointer_validity(WRAPPER_HELPER(structure)->WRAPPER_HELPER(function_name)))                                                                                                         \
-        {                                                                                                                                                                                                       \
-            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOUR API library finder: Flavor '%s' defined in '%s' exports NULL %s function. This is extremely bad.\n", flavor_name, flavor_real_path, #function_name); \
-            retval = false;                                                                                                                                                                                     \
-        }                                                                                                                                                                                                       \
+#define CHECK_FOR_FUNCTION(structure, function_name, ...)                                               \
+    do                                                                                                  \
+    {                                                                                                   \
+        if (!check_function_pointer_validity(WRAPPER_HELPER(structure)->WRAPPER_HELPER(function_name))) \
+        {                                                                                               \
+            rtapi_print_msg(RTAPI_MSG_ERR, __VA_ARGS__);                                                \
+            retval = false;                                                                             \
+        }                                                                                               \
     } while (false);
 
-static bool is_flavor_runtime_business_valid(const char *const flavor_name, const char *const flavor_real_path, flavor_runtime_business_ptr runtime_business)
+static bool is_flavor_runtime_business_valid(const char *const flavor_name, flavor_runtime_business_ptr runtime_business)
 {
+#define FRBV_CHECK(structure, function_name) CHECK_FOR_FUNCTION(structure, function_name, "RTAPI: FLAVOUR API library finder: Flavor '%s' exports NULL %s function (RUNTIME BUSINESS). This is extremely bad.\n", flavor_name, #function_name)
+
     bool retval = true;
-    CHECK_FOR_FUNCTION(runtime_business, task_new_hook)
-    CHECK_FOR_FUNCTION(runtime_business, task_delete_hook)
-    CHECK_FOR_FUNCTION(runtime_business, task_start_hook)
-    CHECK_FOR_FUNCTION(runtime_business, task_stop_hook)
+    FRBV_CHECK(runtime_business, task_delete_hook)
+    FRBV_CHECK(runtime_business, task_start_hook)
+    FRBV_CHECK(runtime_business, task_stop_hook)
 
-    CHECK_FOR_FUNCTION(runtime_business, task_delay_hook)
-    CHECK_FOR_FUNCTION(runtime_business, get_time_hook)
-    CHECK_FOR_FUNCTION(runtime_business, get_clocks_hook)
-    CHECK_FOR_FUNCTION(runtime_business, task_self_hook)
+    FRBV_CHECK(runtime_business, task_delay_hook)
+    FRBV_CHECK(runtime_business, get_time_hook)
+    FRBV_CHECK(runtime_business, get_clocks_hook)
+    FRBV_CHECK(runtime_business, task_self_hook)
 
-    CHECK_FOR_FUNCTION(runtime_business, task_update_stats_hook)
-    CHECK_FOR_FUNCTION(runtime_business, task_print_thread_stats_hook)
+    FRBV_CHECK(runtime_business, task_update_stats_hook)
+    FRBV_CHECK(runtime_business, task_print_thread_stats_hook)
 
-    CHECK_FOR_FUNCTION(runtime_business, task_pause_hook)
-    CHECK_FOR_FUNCTION(runtime_business, task_wait_hook)
-    CHECK_FOR_FUNCTION(runtime_business, task_resume_hook)
+    FRBV_CHECK(runtime_business, task_pause_hook)
+    FRBV_CHECK(runtime_business, task_wait_hook)
+    FRBV_CHECK(runtime_business, task_resume_hook)
     return retval;
 }
 
-static bool is_flavor_hot_metadata_valid(const char *const flavor_name, const char *const flavor_real_path, flavor_hot_metadata_ptr hot_metadata)
+static bool is_flavor_hot_metadata_valid(const char *const flavor_name, flavor_hot_metadata_ptr hot_metadata)
 {
+#define FHMV_CHECK(structure, function_name) CHECK_FOR_FUNCTION(structure, function_name, "RTAPI: FLAVOUR API library finder: Flavor '%s' exports NULL %s function (HOT METADATA). This is extremely bad.\n", flavor_name, #function_name)
+
     bool retval = true;
-    CHECK_FOR_FUNCTION(hot_metadata, module_init_hook)
-    CHECK_FOR_FUNCTION(hot_metadata, module_exit_hook)
+    FHMV_CHECK(hot_metadata, module_init_hook)
+    FHMV_CHECK(hot_metadata, module_exit_hook)
     return retval;
 }
 
@@ -220,7 +223,7 @@ void signal_if_excessive_number_of_flavor_libraries_found(void)
     }
 }
 
-static bool flavor_library_factory(const char *path, char *name, unsigned int id, unsigned int weight, unsigned int magic, unsigned int flags, void *cloobj)
+static bool flavor_library_factory(const char *const path, char *name, unsigned int id, unsigned int weight, unsigned int magic, unsigned int flags, void *cloobj)
 {
     signal_if_excessive_number_of_flavor_libraries_found();
 
@@ -268,24 +271,24 @@ static bool flavor_library_factory(const char *path, char *name, unsigned int id
 /* ========== START FLAVOUR module registration and unregistration functions ========== */
 // Point of contact with flavour API library
 // This function is called from FLAVOUR LIBRARY MODULE
-void register_flavor(flavor_cold_metadata_ptr descriptor_to_register)
+void register_flavor(flavor_hot_metadata_ptr descriptor_to_register)
 {
     hal_u32_t temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));
     if (!(~temp_state & FLAVOR_STATE_INITIALIZED))
     {
-        global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor = descriptor_to_register;
+        global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor = descriptor_to_register;
         // WE are not changing the global state here, because this decision is for rtapi_flavor RTAPI to rule
     }
 }
 
 // Point of contact with flavour API library
 // This function is called from FLAVOUR LIBRARY MODULE
-void unregister_flavor(flavor_cold_metadata_ptr descriptor_to_unregister)
+void unregister_flavor(flavor_hot_metadata_ptr descriptor_to_unregister)
 {
     hal_u32_t temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));
-    if (!(~temp_state & FLAVOR_STATE_INSTALLED) && global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor == descriptor_to_unregister)
+    if (!(~temp_state & FLAVOR_STATE_INSTALLED) && global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor == descriptor_to_unregister)
     {
-        global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor = NULL;
+        global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor = NULL;
         // WE are not changing the global state here, because this decision is for rtapi_flavor RTAPI to rule
     }
 }
@@ -294,30 +297,38 @@ void unregister_flavor(flavor_cold_metadata_ptr descriptor_to_unregister)
 /* ========== START FLAVOUR module arming and yielding functions ========== */
 // Point of contact with flavour API library
 // This function is called from FLAVOUR LIBRARY MODULE
-void arm_flavor(flavor_hot_metadata_ptr descriptor_to_arm)
+int arm_flavor(flavor_runtime_business_ptr descriptor_to_arm)
 {
     hal_u32_t temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));
     if (!(~temp_state & FLAVOR_STATE_INSTALLED))
     {
-        global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor = descriptor_to_arm;
-        // WE are changing the global state here as this decision is wholly in competence of FLAVOUR LIBRARY MODULE
-        // and by calling this function, it signalling the rtapi_flavor RTAPI library to do the change
-        rtapi_store_u32(&(global_flavor_access_structure_ptr->state), (temp_state | FLAVOR_STATE_ARM));
+        if (is_flavor_runtime_business_valid(global_flavor_access_structure_ptr->flavor_module_cold_metadata_descriptor->name, descriptor_to_arm))
+        {
+            global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor = descriptor_to_arm;
+            // WE are changing the global state here as this decision is wholly in competence of FLAVOUR LIBRARY MODULE
+            // and by calling this function, it signalling the rtapi_flavor RTAPI library to do the change
+            rtapi_store_u32(&(global_flavor_access_structure_ptr->state), (temp_state | FLAVOR_STATE_ARM));
+            return 0;
+        }
+        return -EINVAL;
     }
+    return -EPERM;
 }
 
 // Point of contact with flavour API library
 // This function is called from FLAVOUR LIBRARY MODULE
-void yield_flavor(flavor_hot_metadata_ptr descriptor_to_yield)
+int yield_flavor(flavor_runtime_business_ptr descriptor_to_yield)
 {
     hal_u32_t temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));
-    if ((~temp_state & FLAVOR_STATE_ARMED) && global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor == descriptor_to_yield)
+    if ((~temp_state & FLAVOR_STATE_ARMED) && global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor == descriptor_to_yield)
     {
-        global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor = NULL;
+        global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor = NULL;
         // WE are changing the global state here as this decision is wholly in competence of FLAVOUR LIBRARY MODULE
         // and by calling this function, it signalling the rtapi_flavor RTAPI library to do the change
         rtapi_store_u32(&(global_flavor_access_structure_ptr->state), (temp_state & ~FLAVOR_STATE_ARM));
+        return 0;
     }
+    return -EPERM;
 }
 /* ========== END FLAVOUR module arming and yielding functions ========== */
 
@@ -419,8 +430,9 @@ static bool execute_checked_install_of_flavor(flavor_library *library_to_install
             return false;
         }
         // Now we need to verify the installed FLAVOUR module
-        if (!is_flavor_hot_metadata_valid(library_to_install->compile_time_metadata.name, library_to_install->library_path, global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor))
+        if (!is_flavor_hot_metadata_valid(library_to_install->compile_time_metadata.name, global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor))
         {
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR library loader: EXECUTE_CHECKED_INSTALL_OF_FLAVOR, flavour shared library defined in '%d' failed HOT METADATA validation check.\n", library_to_install->library_path);
             if (!execute_checked_uninstall_of_flavor())
             {
                 rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOR library loader: EXECUTE_CHECKED_INSTALL_OF_FLAVOR, failed validation of FLAVOR module could not uninstall flavor module.\n");
@@ -438,26 +450,26 @@ static bool execute_checked_install_of_flavor(flavor_library *library_to_install
     return false;
 }
 
-static bool LAMBDA_is_machinekit_flavor_solib_v1(const char *const path, size_t size_of_input, void *input, flavor_module_v1_found_callback flavor_find)
+static bool LAMBDA_is_machinekit_flavor_solib_v1(const char *const path, size_t size_of_input, void *input, void *cloobj)
 {
-    return is_machinekit_flavor_solib_v1(path, size_of_input, input, flavor_library_factory, NULL);
+    return is_machinekit_flavor_solib_v1(path, size_of_input, input, flavor_library_factory, cloobj);
 }
 
-static bool LAMBDA_file_find(const char *const path)
+static bool LAMBDA_file_find(const char *const path, void *cloobj)
 {
     //Předělat na scan_file_for_elf_sections?
     //Nebo poskládat test_file_for_module_data tak, aby používal scan_file_for_elf_sections
-    return test_file_for_module_data(path, "machinekit-flavor", LAMBDA_is_machinekit_flavor_solib_v1, NULL);
+    return test_file_for_module_data(path, "machinekit-flavor", LAMBDA_is_machinekit_flavor_solib_v1, cloobj);
 }
 
-static int search_directory_for_flavor_modules(const char *const path)
+static int search_directory_for_flavor_modules(const char *const path, void *cloobj)
 {
-    return for_each_node(path, NULL, LAMBDA_file_find, NULL);
+    return for_each_node(path, NULL, LAMBDA_file_find, cloobj);
 }
 
-static int search_mountpoint_for_flavor_modules(const char *const path)
+static int search_mountpoint_for_flavor_modules(const char *const path, void *cloobj)
 {
-    return for_each_node(path, search_mountpoint_for_flavor_modules, LAMBDA_file_find, NULL);
+    return for_each_node(path, search_mountpoint_for_flavor_modules, LAMBDA_file_find, cloobj);
 }
 
 static int discover_default_flavor_modules(void)
@@ -471,7 +483,7 @@ static int discover_default_flavor_modules(void)
 
 static bool install_flavor_by_path(const char *const path)
 {
-    if (LAMBDA_file_find(path))
+    if (LAMBDA_file_find(path, NULL))
     {
         rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR library loader: INSTALL_FLAVOR_BYT_PATH could not find flavor module at specified path '%s'.\n", path);
     }

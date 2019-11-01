@@ -165,7 +165,7 @@ static AvahiCzmqPoll *av_loop;
 
 // RTAPI flavor functions are dynamically linked in through rtapi.so
 // - Pointers to functions
-typedef const *char(flavor_name_t)(void);
+typedef const char*const (flavor_name_t)(void);
 static flavor_name_t *flavor_name_ptr;
 typedef int(flavor_is_configured_t)(void);
 static flavor_is_configured_t *flavor_is_configured_ptr;
@@ -209,7 +209,7 @@ static void configure_flavor(machinetalk::Container &pbreply)
     modinfo_t &mi = modules[RTAPIMOD];
 
     dlerror();
-    GET_FLAVOR_FUNC(flavor_name, get_installed_flavor_name);
+    GET_FLAVOR_FUNC(flavor_name, flavor_get_installed_name);
     GET_FLAVOR_FUNC(flavor_is_configured, flavor_is_configured);
     GET_FLAVOR_FUNC(flavor_feature, verify_installed_flavor_feature);
 
@@ -1158,7 +1158,6 @@ s_handle_timer(zloop_t *loop, int timer_id, void *args)
 static int mainloop()
 {
     int retval;
-    unsigned i;
     static char proctitle[16];
 
     // set new process name
@@ -1207,7 +1206,7 @@ static int mainloop()
     }
 
     // make sure we're setuid root when we need to
-    if (use_drivers || (*flavor_feature_ptr)(NULL, FLAVOR_DOES_IO))
+    if (use_drivers || (*flavor_feature_ptr)(FLAVOR_DOES_IO))
     {
         if (geteuid() != 0)
         {
@@ -1389,7 +1388,7 @@ static int configure_memory(void)
     unsigned int i, pagesize;
     char *buf;
 
-    if (use_drivers || (*flavor_feature_ptr)(NULL, FLAVOR_DOES_IO))
+    if (use_drivers || (*flavor_feature_ptr)(FLAVOR_DOES_IO))
     {
         // Realtime tweak requires privs
         /* Lock all memory. This includes all current allocations (BSS/data)
@@ -1526,7 +1525,7 @@ static int harden_rt()
     // guaranteed the process executing e.g. hal_parport's rtapi_app_main is
     // the same process which starts the RT threads, causing hal_parport
     // thread functions to fail on inb/outb
-    if (use_drivers || (*flavor_feature_ptr)(NULL, FLAVOR_DOES_IO))
+    if (use_drivers || (*flavor_feature_ptr)(FLAVOR_DOES_IO))
     {
         if (iopl(3) < 0)
         {
@@ -1707,7 +1706,7 @@ int main(int argc, char **argv)
     }
     if (!cmdline_args_init(argc, argv))
     {
-        syslog_async(LOG_ERR, "%s:PID%d could not initialize CMDLINE. Exiting...\n", argv[0], pidof());
+        syslog_async(LOG_ERR, "%s:PID%d could not initialize CMDLINE. Exiting...\n", argv[0], getpid());
         exit(EXIT_FAILURE);
     }
     exit(mainloop());

@@ -162,7 +162,7 @@ int rtapi_task_new(const rtapi_task_args_t *args) {
        task_id???).  */
     task->state = USERLAND;	// userland threads don't track this
 
-    retval = flavor_task_new_hook(task, task_id);
+    retval = flavor_task_new_hook(task_id, task);
     if (retval == -ENOSYS)
     {
         ->//AN ERROR OCUURED, SOLVE IT
@@ -195,7 +195,7 @@ int rtapi_task_delete(int task_id) {
     if (task->state != DELETE_LOCKED)	// we don't already hold mutex
 	rtapi_mutex_get(&(rtapi_data->mutex));
 
-    retval = flavor_task_delete_hook(task,task_id);
+    retval = flavor_task_delete_hook(task_id);
     if(retval)
     {
         ->//AN ERROR OCCURED
@@ -238,7 +238,7 @@ int rtapi_task_start(int task_id, unsigned long int period_nsec) {
 		    task_id, task->name);
     rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: period_nsec: %ld\n", period_nsec);
 
-    return flavor_task_start_hook(task,task_id);
+    return flavor_task_start_hook(task_id);
 }
 
 int rtapi_task_stop(int task_id) {
@@ -300,11 +300,11 @@ int rtapi_task_self(void) {
 }
 
 long long rtapi_task_pll_get_reference(void) {
-    return flavor_task_pll_get_reference_hook(NULL);
+    return flavor_task_pll_get_reference_hook();
 }
 
 int rtapi_task_pll_set_correction(long value) {
-    return flavor_task_pll_set_correction_hook(NULL, value);
+    return flavor_task_pll_set_correction_hook(value);
 }
 
 

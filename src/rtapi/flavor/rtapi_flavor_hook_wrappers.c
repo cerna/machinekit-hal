@@ -27,19 +27,29 @@
         }                                                                                    \
     } while (false);
 
-#define CHANGE_STATE_AFTER_EBOS_ON_INT_FUNCTION(new_state, int_retval_operation)                                                                                                                                                                         \
-    do                                                                                                                                                                                                                                                   \
-    {                                                                                                                                                                                                                                                    \
-        int retval = -1;                                                                                                                                                                                                                                 \
-        if (!(retval = int_retval_operation))                                                                                                                                                                                                            \
-        {                                                                                                                                                                                                                                                \
-            rtapi_store_u32(&(global_flavor_access_structure_ptr->state), new_state);                                                                                                                                                                    \
-        }                                                                                                                                                                                                                                                \
-        else                                                                                                                                                                                                                                             \
-        {                                                                                                                                                                                                                                                \
-            rtapi_print_msg(RTAPI_MSG_INFO, "RTAPI: FLAVOR MODULE: CHANGE_STATE_AFTER_EBOS_ON_INT_FUNCTION tried to change state on function '%s' from %d to %d, but the function returned %d\n", #int_retval_operation, temp_state, new_state, retval); \
-        }                                                                                                                                                                                                                                                \
-        return retval;                                                                                                                                                                                                                                   \
+#define EXECUTE_AND_TEST_FOR_STATE_CHANGE_AFTER_EBOS(new_state, int_retval_operation)                                                                                                                                                                               \
+    do                                                                                                                                                                                                                                                              \
+    {                                                                                                                                                                                                                                                               \
+        int retval = int_retval_operation;                                                                                                                                                                                                                          \
+        hal_u32_t new_temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));                                                                                                                                                                    \
+        if (!(~new_temp_state & new_state))                                                                                                                                                                                                                         \
+        {                                                                                                                                                                                                                                                           \
+            return retval;                                                                                                                                                                                                                                          \
+        }                                                                                                                                                                                                                                                           \
+        else                                                                                                                                                                                                                                                        \
+        {                                                                                                                                                                                                                                                           \
+            if (!retval)                                                                                                                                                                                                                                            \
+            {                                                                                                                                                                                                                                                       \
+                rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: EXECUTE_AND_TEST_FOR_STATE_CHANGE_AFTER_EBOS: Function '%s' didn't change state from '%d' to '%d', but returned with value '%d'. This is an error\n", #int_retval_operation, temp_state, new_state, retval); \
+                return -ENOEXEC;                                                                                                                                                                                                                                    \
+            }                                                                                                                                                                                                                                                       \
+            else                                                                                                                                                                                                                                                    \
+            {                                                                                                                                                                                                                                                       \
+                rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: EXECUTE_AND_TEST_FOR_STATE_CHANGE_AFTER_EBOS: Function '%s' didn't change state from '%d' to '%d', returned with value '%d'\n", #int_retval_operation, temp_state, new_state, retval);                       \
+                return retval;                                                                                                                                                                                                                                      \
+            }                                                                                                                                                                                                                                                       \
+        }                                                                                                                                                                                                                                                           \
+        return retval;                                                                                                                                                                                                                                              \
     } while (false);
 
 #define SIGNAL_ERROR_AFTER_EBOS_AND_RETURN(failed_function, error_retval, return_operation, needed_state)                                                                                                                                                                 \
@@ -62,7 +72,7 @@
 
 #define OPERATION_PERMITED_IN_CURRENT_STATE_ON_VOID_FUNCTION(checked_state, function) EXECUTE_BASED_ON_STATE(checked_state, VOID_FUNCTION_RETURN_HELPER(function, WRAPPER_HELPER(0)), SIGNAL_ERROR_AFTER_EBOS_AND_RETURN(function, EPERM, -EPERM, checked_state))
 
-#define OPERATION_PERMITED_IN_CURRENT_STATE_ON_INT_FUNCTION_WITH_STATE_CHANGE(checked_state, new_state, function) EXECUTE_BASED_ON_STATE(checked_state, CHANGE_STATE_AFTER_EBOS_ON_INT_FUNCTION(new_state, function), SIGNAL_ERROR_AFTER_EBOS_AND_RETURN(function, EPERM, -EPERM, checked_state))
+#define OPERATION_PERMITED_IN_CURRENT_STATE_ON_INT_FUNCTION_WITH_STATE_TEST(checked_state, new_state, function) EXECUTE_BASED_ON_STATE(checked_state, EXECUTE_AND_TEST_FOR_STATE_CHANGE_AFTER_EBOS(new_state, function), SIGNAL_ERROR_AFTER_EBOS_AND_RETURN(function, EPERM, -EPERM, checked_state))
 
 #define STRING_GETTER_PERMITTED_IN_CURRENT_STATE(checked_state, function, error_string) EXECUTE_BASED_ON_STATE(checked_state, RETURN_HELPER(function), SIGNAL_ERROR_AFTER_EBOS_AND_RETURN(function, EPERM, error_string, checked_state))
 /* ========== END Public MACROs for accessor function implementations ========== */
@@ -81,12 +91,12 @@ int flavor_exception_handler_hook(int type, rtapi_exception_detail_t *detail, in
 
 int flavor_module_init_hook(void)
 {
-    OPERATION_PERMITED_IN_CURRENT_STATE_ON_INT_FUNCTION_WITH_STATE_CHANGE(FLAVOR_STATE_INSTALLED, WRAPPER_HELPER(temp_state) | FLAVOR_STATE_ARM, global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor->module_init_hook())
+    OPERATION_PERMITED_IN_CURRENT_STATE_ON_INT_FUNCTION_WITH_STATE_TEST(FLAVOR_STATE_INSTALLED, WRAPPER_HELPER(temp_state) | FLAVOR_STATE_ARM, global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor->module_init_hook())
 }
 
 int flavor_module_exit_hook(void)
 {
-    OPERATION_PERMITED_IN_CURRENT_STATE_ON_INT_FUNCTION_WITH_STATE_CHANGE(FLAVOR_STATE_ARMED, WRAPPER_HELPER(temp_state) & ~FLAVOR_STATE_ARM, global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor->module_exit_hook())
+    OPERATION_PERMITED_IN_CURRENT_STATE_ON_INT_FUNCTION_WITH_STATE_TEST(FLAVOR_STATE_ARMED, WRAPPER_HELPER(temp_state) & ~FLAVOR_STATE_ARM, global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor->module_exit_hook())
 }
 
 int flavor_task_update_stats_hook(void)
@@ -156,7 +166,7 @@ int flavor_task_self_hook(void)
 
 long long flavor_task_pll_get_reference_hook(void)
 {
-    OPERATION_PERMITED_IN_CURRENT_STATE_ON_INT_FUNCTION(FLAVOR_STATE_ARMED, global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor->task_wait_hook(flags))
+    /*OPERATION_PERMITED_IN_CURRENT_STATE_ON_INT_FUNCTION(FLAVOR_STATE_ARMED, global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor->task_wait_hook(flags))
     if (global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor && global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor)
     {
         if (global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor->task_pll_get_reference_hook)
@@ -165,18 +175,17 @@ long long flavor_task_pll_get_reference_hook(void)
         }
         return -ENOSYS;
     }
-    return -EPERM;
-    /*
-    SET_FLAVOR_DESCRIPTOR_DEFAULT();
-    if (flavor_descriptor->task_pll_get_reference_hook)
-        return f->task_pll_get_reference_hook();
+    return -EPERM;*/
+
+    if (global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor->task_pll_get_reference_hook)
+        return global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor->task_pll_get_reference_hook();
     else
-        return 0;*/
+        return 0;
 }
 
 int flavor_task_pll_set_correction_hook(long value)
 {
-    OPERATION_PERMITED_IN_CURRENT_STATE_ON_INT_FUNCTION(FLAVOR_STATE_ARMED, global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor->task_wait_hook(flags))
+    /*OPERATION_PERMITED_IN_CURRENT_STATE_ON_INT_FUNCTION(FLAVOR_STATE_ARMED, global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor->task_wait_hook(flags))
     if (global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor && global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor)
     {
         if (global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor->task_start_hook)
@@ -185,13 +194,12 @@ int flavor_task_pll_set_correction_hook(long value)
         }
         return -ENOSYS;
     }
-    return -EPERM;
-    /*
-    SET_FLAVOR_DESCRIPTOR_DEFAULT();
-    if (flavor_descriptor->task_pll_set_correction_hook)
-        return f->task_pll_set_correction_hook(value);
+    return -EPERM;*/
+
+    if (global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor->task_pll_set_correction_hook)
+        return global_flavor_access_structure_ptr->flavor_module_business_logic_descriptor->task_pll_set_correction_hook(value);
     else
-        return 0;*/
+        return 0;
 }
 
 const char *const flavor_get_installed_name(void)

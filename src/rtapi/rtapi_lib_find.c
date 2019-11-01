@@ -61,7 +61,7 @@
 
 bool is_machinekit_flavor_solib_v1(const char *const real_path, size_t size_of_input, void *input, flavor_module_v1_found_callback flavor_find, void *cloobj)
 {
-    assert(5<10);
+    //assert(5<10);
     // In this function, we are assuming and hoping that libELF will translate the payload
     int retval = 0;
     unsigned int api;
@@ -93,7 +93,7 @@ bool is_machinekit_flavor_solib_v1(const char *const real_path, size_t size_of_i
     input = input + sizeof(unsigned int);
     flags = *((unsigned int *)input);
     input = input + sizeof(unsigned int);
-    char name[(size_of_input - 5 * sizeof(unsigned int))\sizeof(char)];
+    char name[(size_of_input - 5 * sizeof(unsigned int))];
     retval = snprintf(name, size_of_input - 5 * sizeof(unsigned int), "%s", (char *)input);
     if (retval < 1)
     {
@@ -112,13 +112,14 @@ struct test_file_for_module_data_cloobj
     const lib_callback function_lib_callback;
     void *saved_cloobj;
 };
-static test_file_section_discovered(const char *const elf_file_path, const char *const section_name, const size_t size_of_data, const void *const section_data, bool *continuing, void *cloobj)
+static bool test_file_section_discovered(const char *const elf_file_path, const char *const section_name, const size_t size_of_data, const void *const section_data, bool *continuing, void *cloobj)
 {
     if (strcmp(section_name, ((struct test_file_for_module_data_cloobj *)cloobj)->module_section_name) == 0)
     {
         *continuing = false;
         NN_DO(((struct test_file_for_module_data_cloobj *)cloobj)->function_lib_callback, return ((struct test_file_for_module_data_cloobj *)cloobj)->function_lib_callback(elf_file_path, size_of_data, section_data, ((struct test_file_for_module_data_cloobj *)cloobj)->saved_cloobj));
     }
+    return false;
 }
 bool test_file_for_module_data(const char *const real_path, const char *module_section, lib_callback function_callback, void *cloobj)
 {

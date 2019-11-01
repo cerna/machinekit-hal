@@ -543,9 +543,6 @@ HEADERS := \
     rtapi/rtapi_mbarrier.h \
     rtapi/shmdrv/shmdrv.h \
     rtapi/flavor/rtapi_flavor.h \
-    rtapi/flavor/xenomai2.h \
-    rtapi/flavor/rt-preempt.h \
-	rtapi/flavor/posix-nonrt.h \
     rtapi/flavor/ulapi.h
 
 
