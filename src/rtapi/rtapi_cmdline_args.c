@@ -45,6 +45,7 @@
 
 #include "rtapi_cmdline_args.h"
 #include "syslog_async.h"
+#include "hal_types.h"
 
 #if (__GLIBC__ >= 2 && __GLIBC_MINOR__ >= 30)
 #define GETTID() gettid()
@@ -75,6 +76,8 @@ static int envc = -1;
 static char **new_environ = NULL;
 // This memory is directly owned by this block of code and should be properly dealt with
 static char *new_environ_space = NULL;
+// Access state of owned data
+static hal_u32_t cmdline_args_state = 0;
 static bool init_done = false;
 static bool exit_done = false;
 // This mutex protects the access to cmdline argument space between data_first_stake and data_last_stake,
@@ -137,6 +140,7 @@ int cmdline_args_init(int argc, char **argv)
     if (fd_stat < 0)
     {
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not open /proc/%d/stat\n", getpid());
+        errno = ENODEV;
         goto error_end;
     }
     read_characters = read(fd_stat, &read_buffer, sizeof(read_buffer));
@@ -144,6 +148,7 @@ int cmdline_args_init(int argc, char **argv)
     if (retval)
     {
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not close /proc/%d/stat, fd: %d\n", getpid(), fd_stat);
+        errno = ENODEV;
         goto error_end;
     }
     if (read_characters < 1)
@@ -206,13 +211,13 @@ int cmdline_args_init(int argc, char **argv)
     data_last_stake = (void *)old_env_end;
     size_of_area_for_data = (size_t)(((char *)data_last_stake - (char *)data_first_stake) + 1);
 
-    new_environ = (char **)malloc(sizeof(char *) * (envc + 1));
+    new_environ = malloc(sizeof(char *) * (envc + 1));
     if (!new_environ)
     {
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory for environment vector\n");
         goto error_end;
     }
-    new_environ_space = (char *)malloc((size_t)(((char *)old_env_end - (char *)old_env_start) + 1));
+    new_environ_space = malloc((size_t)(((char *)old_env_end - (char *)old_env_start) + 1));
     if (!new_environ_space)
     {
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory for new environment space\n");
@@ -222,7 +227,7 @@ int cmdline_args_init(int argc, char **argv)
     current_state_argc = argc;
     // We are doing this so subsequent calls to realloc when changing this pointer
     // array are completelly legal
-    current_state_argv = (char **)malloc((current_state_argc + 1) * sizeof(char *));
+    current_state_argv = malloc((current_state_argc + 1) * sizeof(char *));
     if (!current_state_argv)
     {
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory for new argument vector\n");
@@ -357,13 +362,13 @@ int cmdline_args_init(int argc, char **argv)
     data_last_stake = (void *)delimiter;
     size_of_area_for_data = (size_t)(((char *)data_last_stake - (char *)data_first_stake) + 1);
 
-    new_environ = (char **)malloc(sizeof(char *) * (envc + 1));
+    new_environ = malloc(sizeof(char *) * (envc + 1));
     if (!new_environ)
     {
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory for environment vector\n");
         goto error_end;
     }
-    new_environ_space = (char *)malloc((size_t)(size_of_area_for_data - used_data_counter));
+    new_environ_space = malloc((size_t)(size_of_area_for_data - used_data_counter));
     if (!new_environ_space)
     {
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_INIT could not malloc memory for new environment space\n");
@@ -579,7 +584,7 @@ int execute_on_cmdline_copy(cmdline_data_callback cmdline_process_function, void
 
     pthread_mutex_lock(&cmdline_mutex);
 
-    temporary_space = (char *)malloc(used_data_counter);
+    temporary_space = malloc(used_data_counter);
     if (!temporary_space)
     {
         pthread_mutex_unlock(&cmdline_mutex);
@@ -587,7 +592,7 @@ int execute_on_cmdline_copy(cmdline_data_callback cmdline_process_function, void
         syslog_async(LOG_ERR, "RTAPI_CMDLINE_ARGS EXECUTE_ON_CMDLINE_COPY encountered and error (%d)-> %s when trying to allocate %ld chars for temporary_space\n", retval, strerror(retval), used_data_counter);
         goto end;
     }
-    temporary_argv = (char **)malloc((current_state_argc + 1) * sizeof(char *));
+    temporary_argv = malloc((current_state_argc + 1) * sizeof(char *));
     if (!temporary_argv)
     {
         pthread_mutex_unlock(&cmdline_mutex);

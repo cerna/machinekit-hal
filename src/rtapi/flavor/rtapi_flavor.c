@@ -432,7 +432,7 @@ static bool execute_checked_install_of_flavor(flavor_library *library_to_install
         // Now we need to verify the installed FLAVOUR module
         if (!is_flavor_hot_metadata_valid(library_to_install->compile_time_metadata.name, global_flavor_access_structure_ptr->flavor_module_hot_metadata_descriptor))
         {
-            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR library loader: EXECUTE_CHECKED_INSTALL_OF_FLAVOR, flavour shared library defined in '%d' failed HOT METADATA validation check.\n", library_to_install->library_path);
+            rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR library loader: EXECUTE_CHECKED_INSTALL_OF_FLAVOR, flavour shared library defined in '%s' failed HOT METADATA validation check.\n", library_to_install->library_path);
             if (!execute_checked_uninstall_of_flavor())
             {
                 rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOR library loader: EXECUTE_CHECKED_INSTALL_OF_FLAVOR, failed validation of FLAVOR module could not uninstall flavor module.\n");
@@ -522,6 +522,7 @@ static bool install_default_flavor(void)
     int found = 0;
 
     found = discover_default_flavor_modules();
+    printf("FOUND %d\n", found);
     rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOUR library loader: INSTALL_DEFAULT_FLAVOR function found %d flavor library modules.\n", found);
 
     for (flavor_library *index = known_libraries_head; index; index = index->next)
@@ -833,15 +834,29 @@ int flavor_module_startup(void)
     int retval = -1;
     hal_u32_t temp_state = 0;
 
+    // If this is the first call, change state from 0 to FLAVOR_STATE_INITIALIZATION
+    temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));
+    if (!(~temp_state & 0))
+    {
+        rtapi_store_u32(&(global_flavor_access_structure_ptr->state), (temp_state | FLAVOR_STATE_INITIALIZATION));
+    }
+
     // This operation only makes a sense in the INITIALIZED state (and nothing else)
     temp_state = rtapi_load_u32(&(global_flavor_access_structure_ptr->state));
     if (~temp_state & FLAVOR_STATE_INITIALIZED)
     {
+        rtapi_print_msg(RTAPI_MSG_ERR, "RTAPI: FLAVOR_MODULE_STARTUP is in '%d' state, but for successful function call has to be in state '%d'\n", temp_state, FLAVOR_STATE_INITIALIZED);
         retval = -EPERM;
         goto end;
     }
 
     retval_cmdline = execute_on_cmdline_copy(extract_flavor_from_cmdline_arguments_wrapper, (void *)&flavor_information_cmdline);
+    if (retval_cmdline == -EPERM)
+    {
+        rtapi_print_msg(RTAPI_MSG_ERR, "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr\n");
+        retval = retval_cmdline;
+        goto end;
+    }
     retval_environment = extract_flavor_from_environmet_variables(&flavor_information_environment);
 
     if (retval_cmdline != -ENODATA && retval_environment != -ENODATA)
@@ -884,12 +899,15 @@ int flavor_module_startup(void)
         switch (valid_data->state)
         {
         case FLAVOR_PATH_SET:
+        rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOR_MODULE_STARTUP1 encountered an unknown error\n");
             retval = install_flavor_by_path(valid_data->data.flavor_path);
             goto end;
         case FLAVOR_ID_SET:
+        rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOR_MODULE_STARTUP2 encountered an unknown error\n");
             retval = install_flavor_by_id(valid_data->data.flavor_id);
             goto end;
         case FLAVOR_NAME_SET:
+        rtapi_print_msg(RTAPI_MSG_DBG, "RTAPI: FLAVOR_MODULE_STARTUP3 encountered an unknown error\n");
             retval = install_flavor_by_name(valid_data->data.flavor_name);
             goto end;
         default:

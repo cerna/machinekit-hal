@@ -165,7 +165,7 @@ int rtapi_task_new(const rtapi_task_args_t *args) {
     retval = flavor_task_new_hook(task_id, task);
     if (retval == -ENOSYS)
     {
-        ->//AN ERROR OCUURED, SOLVE IT
+        //AN ERROR OCUURED, SOLVE IT
     }
 
     rtapi_data->task_count++;
@@ -198,7 +198,7 @@ int rtapi_task_delete(int task_id) {
     retval = flavor_task_delete_hook(task_id);
     if(retval)
     {
-        ->//AN ERROR OCCURED
+        //AN ERROR OCCURED
     }
 
     if (task->state != DELETE_LOCKED)	// we don't already hold mutex
@@ -256,7 +256,7 @@ int rtapi_task_stop(int task_id) {
     retval = flavor_task_stop_hook(task_id);
     if(retval)
     {
-        ->//AN ERROR OCCURED
+        //AN ERROR OCCURED
     }
 
     return 0;

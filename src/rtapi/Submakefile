@@ -106,21 +106,21 @@ $(eval $(call c_comp_build_rules,rtapi/rtapi.o,$(patsubst %.c,%.o,\
 # compile userland PCI support with udev cflags if any
 $(call TORTOBJS, rtapi/rtapi_pci.c): EXTRAFLAGS += $(LIBUDEV_CFLAGS)
 
-$(eval $(call c_comp_build_rules,rtapi/flavor/posix-nonrt.o,$(patsubst %.c,%.o,\
+#$(eval $(call c_comp_build_rules,rtapi/flavor/posix-nonrt.o,$(patsubst %.c,%.o,\
 	rtapi/flavor/posix-common.c \
 )))
 
-$(eval $(call c_comp_build_rules,rtapi/flavor/rt-preempt.o,$(patsubst %.c,%.o,\
+#$(eval $(call c_comp_build_rules,rtapi/flavor/rt-preempt.o,$(patsubst %.c,%.o,\
 	rtapi/flavor/posix-common.c \
 )))
 
-$(call TORTOBJS, rtapi/flavor/posix-common.c): \
+#$(call TORTOBJS, rtapi/flavor/posix-common.c): \
 	EXTRAFLAGS += $(LIBCGROUP_CFLAGS)
 
-$(eval $(call c_comp_build_rules,rtapi/flavor/xenomai2.o,$(patsubst %.c,%.o,\
+#$(eval $(call c_comp_build_rules,rtapi/flavor/xenomai2.o,$(patsubst %.c,%.o,\
 )))
 
-$(RTLIBDIR)/xenomai2.so: \
+#$(RTLIBDIR)/xenomai2.so: \
 	EXTRA_LDFLAGS += $(XENOMAI_LDFLAGS)
 
 # userland PCI support needs -ludev for rtapi.so

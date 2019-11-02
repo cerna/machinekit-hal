@@ -54,7 +54,7 @@ long int rtapi_clock_set_period(long int nsecs) {
 	return -EINVAL;
     }
 
-    if (flavor_feature(NULL, FLAVOR_TIME_NO_CLOCK_MONOTONIC))
+    if (flavor_verify_installed_feature(FLAVOR_TIME_NO_CLOCK_MONOTONIC))
         period = nsecs;
     else {
         clock_getres(CLOCK_MONOTONIC, &res);

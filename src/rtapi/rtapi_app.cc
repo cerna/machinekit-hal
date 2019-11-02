@@ -1162,7 +1162,7 @@ static int mainloop()
 
     // set new process name
     snprintf(proctitle, sizeof(proctitle), "rtapi:%d", rtapi_instance_loc);
-    if (set_process_name(proctitle))
+    if (!set_process_name(proctitle))
     {
         syslog_async(LOG_ERR, "%s: FATAL - failed to change name of process %s\n", get_process_name());
         exit(EXIT_FAILURE);
@@ -1669,6 +1669,12 @@ int main(int argc, char **argv)
     }
 #endif
 
+    if (cmdline_args_init(argc, argv) != 0)
+    {
+        syslog_async(LOG_ERR, "%s: (PID%d) could not initialize CMDLINE. Exiting...\n", argv[0], getpid());
+        exit(EXIT_FAILURE);
+    }
+
     // the actual checking for setuid happens in harden_rt() (if needed)
     if (!foreground && (getuid() > 0))
     {
@@ -1704,11 +1710,7 @@ int main(int argc, char **argv)
     {
         // dont run as root XXX
     }
-    if (!cmdline_args_init(argc, argv))
-    {
-        syslog_async(LOG_ERR, "%s:PID%d could not initialize CMDLINE. Exiting...\n", argv[0], getpid());
-        exit(EXIT_FAILURE);
-    }
+    
     exit(mainloop());
 }
 

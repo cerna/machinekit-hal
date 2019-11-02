@@ -181,7 +181,7 @@ int rtapi_app_main(void)
 {
     // sanity: these must have been inited before by the
     // respective rtapi.so/.ko module
-    HAL_ASSERT(flavor_is_configured());
+    HAL_ASSERT(flavor_is_armed());
     CHECK_NULL(global_data);
 
     HALDBG("initializing RT hal_lib support");

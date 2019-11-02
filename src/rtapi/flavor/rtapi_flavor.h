@@ -6,7 +6,6 @@ extern "C"
 {
 #endif
 
-#include <assert.h>
 #include "rtapi_common.h"
 #include "hal_types.h"
 #include "rtapi_atomics.h"
@@ -232,6 +231,10 @@ extern "C"
     extern int flavor_task_self_hook(void);
     extern long long flavor_task_pll_get_reference_hook(void);
     extern int flavor_task_pll_set_correction_hook(long value);
+
+    extern int flavor_verify_installed_feature(int feature);
+
+    extern int flavor_is_armed(void);
     /* ========== END Internal side RTAPI coupling points to FLAVOUR module ========== */
 
     /*

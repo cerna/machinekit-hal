@@ -25,7 +25,7 @@
 *
 ********************************************************************/
 
-#include "posix-nonrt.h"
+/*#include "posix-nonrt.h"
 #include "rtapi_flavor.h"
 
 #ifdef RTAPI
@@ -105,4 +105,4 @@ static void lib_fini(void)
     unregister_flavor(flavor_posix_nonrt_descriptor);
 }
 
-FLAVOR_STAMP("posix-nonrt", 2, 0, 1)
+FLAVOR_STAMP("posix-nonrt", 2, 0, 1)*/

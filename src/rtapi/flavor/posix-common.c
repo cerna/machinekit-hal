@@ -27,7 +27,7 @@
 ********************************************************************/
 
 
-#include "rtapi_flavor.h"
+/*#include "rtapi_flavor.h"
 #include "rtapi.h"
 #include "rtapi_common.h"
 #include <libcgroup.h>
@@ -571,5 +571,5 @@ static int posix_task_pll_set_correction_hook(long value) {
     /*                 task_id, value); */
     return 0;
 }
-
+*/
 #endif
