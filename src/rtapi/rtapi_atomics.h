@@ -84,6 +84,16 @@ static inline void rtapi_add_u32(hal_u32_t *target, const hal_u32_t delta)
     ck_pr_faa_uint(target, delta);
 }
 
+static inline void rtapi_and_s32(hal_s32_t *target, const hal_s32_t delta)
+{
+    ck_pr_and_int(target, delta);
+}
+
+static inline void rtapi_and_u32(hal_u32_t *target, const hal_u32_t delta)
+{
+    ck_pr_and_uint(target, delta);
+}
+
 #if defined(CK_F_PR_LOAD_64)
 static inline hal_u64_t rtapi_load_u64(const hal_u64_t *target)
 {
@@ -249,6 +259,16 @@ static inline void rtapi_add_s32(hal_s32_t *target, const hal_s32_t delta)
 static inline void rtapi_add_u32(hal_u32_t *target, const hal_u32_t delta)
 {
     __atomic_add_fetch (target, delta, RTAPI_MEMORY_MODEL);
+}
+
+static inline void rtapi_and_s32(hal_s32_t *target, const hal_s32_t delta)
+{
+    __atomic_and_fetch (target, delta, RTAPI_MEMORY_MODEL);
+}
+
+static inline void rtapi_and_u32(hal_u32_t *target, const hal_u32_t delta)
+{
+    __atomic_and_fetch (target, delta, RTAPI_MEMORY_MODEL);
 }
 
 static inline int rtapi_cas_u8(hal_u8_t *target, hal_u8_t old_value, hal_u8_t new_value)
