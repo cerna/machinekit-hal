@@ -540,7 +540,7 @@ int rtapi_execute_on_cmdline_copy(cmdline_data_callback cmdline_process_function
 
     if (!cmdline_process_function)
     {
-        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS EXECUTE_ON_CMDLINE_COPY passed NULL as a cmdenv_process_function\n");
+        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS EXECUTE_ON_CMDLINE_COPY passed NULL as a cmdline_process_function\n");
         retval = -EINVAL;
         goto end;
     }
