@@ -113,15 +113,18 @@ static int rtapi_cmdenv_args_init(void)
     int read_characters = -1;
     char *temporary_character = NULL;
     char read_buffer[2048];
-    size_t string_lenght = 0;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)
     struct prctl_mm_map prctl_map = {0};
+#endif
 
     unsigned long int old_start_code = 0;
     unsigned long int old_end_code = 0;
     unsigned long int old_start_data = 0;
     unsigned long int old_end_data = 0;
     unsigned long int old_start_brk = 0;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)
     unsigned long int old_brk = 0;
+#endif
     unsigned long int old_start_stack = 0;
     unsigned long int old_arg_start = 0;
     unsigned long int old_arg_end = 0;
@@ -431,23 +434,23 @@ bool rtapi_set_process_name(const char *const new_name)
     }
     if (temp_state & CMDENV_ARGS_STATE_EXIT)
     {
-        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS SET_PROCESS_NAME has to be called before exit (call to cmdenv_args_exit) of process %s with PID %d\n", get_process_name(), getpid());
+        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS SET_PROCESS_NAME has to be called before exit (call to cmdenv_args_exit) of process %s with PID %d\n", rtapi_get_process_name(), getpid());
         goto end;
     }
 
     new_name_lenght = strlen(new_name) + 1;
     if (new_name_lenght > 16)
     {
-        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS SET_PROCESS_NAME has to be passed name shorter than 16 characters, passed name %s has %d characters\n", new_name, new_name_lenght);
+        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS SET_PROCESS_NAME has to be passed name shorter than 16 characters, passed name %s has %ld characters\n", new_name, new_name_lenght);
         goto end;
     }
 
     pthread_mutex_lock(&cmdenv_mutex);
 
     // There probably is absolutely no chance of this constraint being broken, so the check is only for a good feeling
-    if ((used_data_counter - (size_t)(strlen(get_process_name()) + 1) + new_name_lenght) > size_of_area_for_data)
+    if ((used_data_counter - (size_t)(strlen(rtapi_get_process_name()) + 1) + new_name_lenght) > size_of_area_for_data)
     {
-        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS SET_PROCESS_NAME has breached the maximum size allocated for cmdenv arguments of %ld with wanting to write %ld\n", size_of_area_for_data, (size_t)(used_data_counter - (size_t)(strlen(get_process_name()) + 1) + new_name_lenght));
+        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS SET_PROCESS_NAME has breached the maximum size allocated for cmdenv arguments of %ld with wanting to write %ld\n", size_of_area_for_data, (size_t)(used_data_counter - (size_t)(strlen(rtapi_get_process_name()) + 1) + new_name_lenght));
         goto mutex_release;
     }
 
@@ -484,23 +487,23 @@ bool rtapi_set_process_name(const char *const new_name)
 
     if (sprintf(main_thread_name_path, "/proc/self/task/%u/comm", getpid()) < 0)
     {
-        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS SET_PROCESS_NAME cannot change name of process %d to %s (write to /proc/%d/task/%d/comm failed)\n", getpid(), get_process_name(), getpid(), getpid());
+        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS SET_PROCESS_NAME cannot change name of process %d to %s (write to /proc/%d/task/%d/comm failed)\n", getpid(), rtapi_get_process_name(), getpid(), getpid());
         goto temporary_space_free;
     }
     main_threan_name_fd = open(main_thread_name_path, O_RDWR);
     if (main_threan_name_fd < 0)
     {
-        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS SET_PROCESS_NAME cannot change name of process %d to %s (write to /proc/%d/task/%d/comm failed)\n", getpid(), get_process_name(), getpid(), getpid());
+        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS SET_PROCESS_NAME cannot change name of process %d to %s (write to /proc/%d/task/%d/comm failed)\n", getpid(), rtapi_get_process_name(), getpid(), getpid());
         goto temporary_space_free;
     }
     if (write(main_threan_name_fd, main_thread_name_path, strlen(main_thread_name_path) + 1) < 0)
     {
-        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS SET_PROCESS_NAME cannot change name of process %d to %s (write to /proc/%d/task/%d/comm failed)\n", getpid(), get_process_name(), getpid(), getpid());
+        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS SET_PROCESS_NAME cannot change name of process %d to %s (write to /proc/%d/task/%d/comm failed)\n", getpid(), rtapi_get_process_name(), getpid(), getpid());
         goto temporary_space_free;
     }
     if (close(main_threan_name_fd) < 0)
     {
-        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS SET_PROCESS_NAME cannot change name of process %d to %s (write to /proc/%d/task/%d/comm failed)\n", getpid(), get_process_name(), getpid(), getpid());
+        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS SET_PROCESS_NAME cannot change name of process %d to %s (write to /proc/%d/task/%d/comm failed)\n", getpid(), rtapi_get_process_name(), getpid(), getpid());
         goto temporary_space_free;
     }
 
@@ -533,7 +536,7 @@ int rtapi_execute_on_cmdline_copy(cmdline_data_callback cmdline_process_function
     }
     if (temp_state & CMDENV_ARGS_STATE_EXIT)
     {
-        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS EXECUTE_ON_CMDLINE_COPY has to be called before exit (call to cmdenv_args_exit) of process %s with PID %d\n", get_process_name(), getpid());
+        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS EXECUTE_ON_CMDLINE_COPY has to be called before exit (call to cmdenv_args_exit) of process %s with PID %d\n", rtapi_get_process_name(), getpid());
         retval = -EPERM;
         goto end;
     }
@@ -590,43 +593,58 @@ int rtapi_execute_on_original_cmdline(cmdline_data_callback cmdline_process_func
     syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS EXECUTE_ON_ORIGINAL_CMDLINE not yet implemented\n");
     return -ENOSYS;
 }
+#define WRAPPER_HELPER_VA(...) __VA_ARGS__
+#define CHECK_STATE_AND_INITIALIZE(retval_init, retval_exit, error_msg_init, error_msg_exit) \
+    do                                                                                       \
+    {                                                                                        \
+        hal_u8_t temp_state = rtapi_load_u8(&cmdenv_args_state);                             \
+        if (!(temp_state & CMDENV_ARGS_STATE_INIT))                                          \
+        {                                                                                    \
+            int retval = rtapi_cmdenv_args_init();                                           \
+            if (retval)                                                                      \
+            {                                                                                \
+                syslog_async(LOG_ERR, error_msg_init);                                       \
+                return retval_init;                                                          \
+            }                                                                                \
+        }                                                                                    \
+        if (temp_state & CMDENV_ARGS_STATE_EXIT)                                             \
+        {                                                                                    \
+            syslog_async(LOG_ERR, error_msg_exit);                                           \
+            return retval_exit;                                                              \
+        }                                                                                    \
+    } while (false);
 
 char *rtapi_getenv(const char *name)
 {
-    hal_u8_t temp_state = rtapi_load_u8(&cmdenv_args_state);
-    if (!(temp_state & CMDENV_ARGS_STATE_INIT))
-    {
-        if (rtapi_cmdenv_args_init())
-        {
-            syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS RTAPI_GETENV could not execute because an error occurred.\n");
-            return NULL;
-        }
-    }
-    if (temp_state & CMDENV_ARGS_STATE_EXIT)
-    {
-        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS RTAPI_GETENV has to be called before exit (call to cmdenv_args_exit) of process %s with PID %d\n", get_process_name(), getpid());
-        return NULL;
-    }
+    CHECK_STATE_AND_INITIALIZE(retval, NULL, WRAPPER_HELPER_VA("RTAPI_CMDENV_ARGS RTAPI_GETENV could not execute because an error occurred.\n"), WRAPPER_HELPER_VA("RTAPI_CMDENV_ARGS RTAPI_GETENV has to be called before exit (call to cmdenv_args_exit) of process %s with PID %d\n", rtapi_get_process_name(), getpid()))
 
     return getenv(name);
 }
 
+int rtapi_setenv(const char *name, const char *value, int replace)
+{
+    CHECK_STATE_AND_INITIALIZE(retval, -EPERM, WRAPPER_HELPER_VA("RTAPI_CMDENV_ARGS RTAPI_SETENV could not execute because an error occurred.\n"), WRAPPER_HELPER_VA("RTAPI_CMDENV_ARGS RTAPI_SETENV has to be called before exit (call to cmdenv_args_exit) of process %s with PID %d\n", rtapi_get_process_name(), getpid()))
+
+    return setenv(name, value, replace);
+}
+
+int rtapi_unsetenv(const char *name)
+{
+    CHECK_STATE_AND_INITIALIZE(retval, -EPERM, WRAPPER_HELPER_VA("RTAPI_CMDENV_ARGS RTAPI_UNSETENV could not execute because an error occurred.\n"), WRAPPER_HELPER_VA("RTAPI_CMDENV_ARGS RTAPI_UNSETENV has to be called before exit (call to cmdenv_args_exit) of process %s with PID %d\n", rtapi_get_process_name(), getpid()))
+
+    return unsetenv(name);
+}
+
+int rtapi_clearenv(void)
+{
+    CHECK_STATE_AND_INITIALIZE(retval, -EPERM, WRAPPER_HELPER_VA("RTAPI_CMDENV_ARGS RTAPI_CLEANENV could not execute because an error occurred.\n"), WRAPPER_HELPER_VA("RTAPI_CMDENV_ARGS RTAPI_CLEANENV has to be called before exit (call to cmdenv_args_exit) of process %s with PID %d\n", rtapi_get_process_name(), getpid()))
+
+    return clearenv();
+}
+
 int rtapi_putenv(char *string)
 {
-    hal_u8_t temp_state = rtapi_load_u8(&cmdenv_args_state);
-    if (!(temp_state & CMDENV_ARGS_STATE_INIT))
-    {
-        if (rtapi_cmdenv_args_init())
-        {
-            syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS RTAPI_PUTENV could not execute because an error occurred.\n");
-            return -EPERM;
-        }
-    }
-    if (temp_state & CMDENV_ARGS_STATE_EXIT)
-    {
-        syslog_async(LOG_ERR, "RTAPI_CMDENV_ARGS RTAPI_PUTENV has to be called before exit (call to cmdenv_args_exit) of process %s with PID %d\n", get_process_name(), getpid());
-        return -EPERM;
-    }
+    CHECK_STATE_AND_INITIALIZE(retval, -EPERM, WRAPPER_HELPER_VA("RTAPI_CMDENV_ARGS RTAPI_PUTENV could not execute because an error occurred.\n"), WRAPPER_HELPER_VA("RTAPI_CMDENV_ARGS RTAPI_PUTENV has to be called before exit (call to cmdenv_args_exit) of process %s with PID %d\n", rtapi_get_process_name(), getpid()))
 
     return putenv(string);
 }

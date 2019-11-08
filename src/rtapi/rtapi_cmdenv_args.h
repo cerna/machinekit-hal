@@ -63,9 +63,30 @@ extern "C"
     */
     int rtapi_execute_on_original_cmdline(cmdline_data_callback cmdline_process_function, void *cloobj);
 
+    /* Machinekit RTAPI wrapper around standard Lib C function which guarantee that the CMDENV
+    *  is initialized
+    */
     char *rtapi_getenv(const char *name);
 
+    /* Machinekit RTAPI wrapper around standard Lib C function which guarantee that the CMDENV
+    *  is initialized
+    */
+    int rtapi_setenv(const char *name, const char *value, int overwrite);
+    
+    /* Machinekit RTAPI wrapper around standard Lib C function which guarantee that the CMDENV
+    *  is initialized
+    */
+    int rtapi_unsetenv(const char *name);
+    
+    /* Machinekit RTAPI wrapper around standard Lib C function which guarantee that the CMDENV
+    *  is initialized
+    */
     int rtapi_putenv(char *string);
+    
+    /* Machinekit RTAPI wrapper around standard Lib C function which guarantee that the CMDENV
+    *  is initialized
+    */
+    int rtapi_clearenv(void);
 #ifdef __cplusplus
 }
 #endif
