@@ -49,7 +49,7 @@ services:
 
 env:
   global:
-    - IMAGE=${IMAGE:-zultron/mk-cross-builder}
+    - IMAGE=${IMAGE:-eryaf/mk-cross-builder}
     - MK_PACKAGE_VERBOSE=${MK_PACKAGE_VERBOSE:-false}
     - JOBS=${JOBS:-2}
     - TEST_DEBUG=false
