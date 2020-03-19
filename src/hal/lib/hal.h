@@ -154,7 +154,6 @@ struct halhdr;
 struct hal_comp;
 struct hal_inst;
 struct hal_pin;
-struct hal_param;
 struct hal_sig;
 struct hal_group;
 struct hal_member;
@@ -167,7 +166,6 @@ struct hal_plug;
 typedef struct hal_comp hal_comp_t;
 typedef struct hal_inst hal_inst_t;
 typedef struct hal_pin hal_pin_t;
-typedef struct hal_param hal_param_t;
 typedef struct hal_sig hal_sig_t;
 typedef struct hal_group hal_group_t;
 typedef struct hal_member hal_member_t;
@@ -504,17 +502,6 @@ typedef enum {
     HAL_IO = (HAL_IN | HAL_OUT),
 } hal_pin_dir_t;
 
-/** HAL parameters also have a direction attribute.  For parameters,
-    the attribute determines whether the user can write the value
-    of the parameter, or simply read it.  HAL_RO parameters are
-    read-only, and HAL_RW ones are writable with 'halcmd setp'.
-*/
-
-typedef enum {
-    HAL_RO = 64,
-    HAL_RW = 192,
-} hal_param_dir_t;
-
 /***********************************************************************
 *                      "LOCKING" FUNCTIONS                             *
 ************************************************************************/
@@ -561,15 +548,6 @@ typedef struct { shmoff_t _us;   } u32_sig_ptr;
 typedef struct { shmoff_t _lss;  } s64_sig_ptr;
 typedef struct { shmoff_t _lus;  } u64_sig_ptr;
 typedef struct { shmoff_t _fs;   } float_sig_ptr;
-
-#if 0
-// params are on the way out, so dont bother
-typedef struct { shmoff_t _bpar; } bit_param_ptr;
-typedef struct { shmoff_t _spar; } s32_param_ptr;
-typedef struct { shmoff_t _upar; } u32_param_ptr;
-typedef struct { shmoff_t _fpar; } float_param_ptr;
-
-#endif
 
 /***********************************************************************
 *                        "PIN" FUNCTIONS                               *
