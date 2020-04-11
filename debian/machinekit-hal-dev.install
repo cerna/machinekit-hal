@@ -1,4 +1,6 @@
-usr/bin/comp
+#!/usr/bin/dh-exec --with-scripts=install-move
+=> debian/tmp/usr/bin/comp => usr/bin/comp
 usr/include/linuxcnc
 usr/lib/lib*.so
-usr/share/linuxcnc/Makefile.*
+=> debian/tmp/usr/share/linuxcnc/Makefile.inc => usr/share/linuxcnc/Makefile.inc
+=> debian/tmp/usr/share/linuxcnc/Makefile.modinc => sr/share/linuxcnc/Makefile.modinc

@@ -1,3 +1,4 @@
+#!/usr/bin/dh-exec
 etc/linuxcnc/rtapi.ini
 etc/linuxcnc/machinekit.ini
 etc/modprobe.d/linuxcnc.conf

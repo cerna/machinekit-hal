@@ -146,10 +146,8 @@ install: build
 
 	mkdir -p debian/tmp/usr/lib/linuxcnc/prubin
 
-	dh_install --sourcedir=debian/tmp -Xusr/bin/pasm --fail-missing -v
-	# Eventually this will replace the above
-	# dh_install -Xusr/bin/pasm -v
-	# dh_missing --fail-missing
+	dh_install -Xusr/bin/pasm -v
+	dh_missing --list-missing
 
 # Build architecture-independent files here.
 binary-indep: build install

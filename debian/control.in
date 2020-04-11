@@ -2,10 +2,10 @@ Source: machinekit-hal
 Section: misc
 Priority: extra
 Maintainer: MachinekitBot <machinekitATeryafDOTcom>
-Build-Depends: debhelper (>= 6),
+Build-Depends: debhelper (>= 12), debhelper-compat (= 12),
     autoconf (>= 2.63), automake, libboost-python-dev, libgl1-mesa-dev,
     libglu1-mesa-dev, libmodbus-dev (>= 3.0),
-    libudev-dev,
+    libudev-dev, dh-exec (>= 0.25),
     libglib2.0-dev, libgtk2.0-dev, tcl8.6-dev, tk8.6-dev,
     libncurses-dev, libreadline-dev, libusb-1.0-0-dev, libxmu-dev,
     libxmu-headers, python (>= 2.6.6), python-dev (>= 2.6.6),
