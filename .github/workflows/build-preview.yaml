@@ -62,11 +62,6 @@ jobs:
         fetch-depth: '0'
         path: 'machinekit-hal'
     
-    - name: DEBUG, delete
-      run: |
-        git log --oneline
-      working-directory: ./machinekit-hal
-    
     - name: Get SHAs needed for file changes checking
       id: event_normalizer 
       run: |
@@ -80,13 +75,20 @@ jobs:
           echo "::set-output name=after::${{ github.sha }}"
           exit 1
         fi
-        printl "Disallowed event type\n"
+        printf "Disallowed event type\n"
         exit 1
 
+      # Force-push checking should be done better, this implementation doesn't
+      # take into account changes in the force push: How to get from Github API
+      # the last SHA before push?
     - name: Check if Docker images related files were changed in this event
       run: |
         if [[ ${BEFORE} =~ ^0+$ ]]; then
           printf "This is new branch\n"
+          exit 0
+        fi
+        if ! [ git cat-file -e ${BEFORE}^{commit} ]; then
+          printf "Commit $BEFORE does not exists, this is probably force push\n"
           exit 0
         fi
         CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${BEFORE} ${AFTER})
@@ -173,7 +175,7 @@ jobs:
         for i in ${test_array[@]}
         do
           IMAGENAME="${IMAGE_NAME_ROOT}$i"
-          IMAGESHA=$(printl "${INPUT_JSON}" | jq -r --arg IMAGENAME "$IMAGENAME" '.data.repository.registryPackagesForQuery.nodes[] | select(.name == $IMAGENAME).version.sha256')
+          IMAGESHA=$(printf "${INPUT_JSON}" | jq -r --arg IMAGENAME "$IMAGENAME" '.data.repository.registryPackagesForQuery.nodes[] | select(.name == $IMAGENAME).version.sha256')
           if [ -z "$IMAGESHA" ]; then
             printf "Docker image $IMAGENAME:latest does not exist in registry docker.pkg.github.com/$REPOSITORY\n"
             ((MISSING=MISSING+1))
@@ -220,7 +222,7 @@ jobs:
     needs: prepareState
     strategy:
       matrix:
-        osVersion: ['jessie', 'stretch', 'buster', 'bullseye']
+        osVersion: ['jessie', 'stretch', 'buster']
         architecture: ['i386', 'amd64', 'armhf', 'arm64']
         exclude:
           - osVersion: 'jessie'
@@ -259,9 +261,9 @@ jobs:
       - name: Prepare the Docker image
         run: |
           if [ "${{ needs.prepareState.outputs.BuildDockerImages }}" == "true" ]; then
-          scripts/build_debian_docker_image -r temp -i temp -t ${TAG}
-          docker tag temp/temp:${TAG} ${IMAGE_NAME_ROOT}${TAG}:latest
-          exit 0
+            scripts/build_debian_docker_image -r temp -i temp -t ${TAG}
+            docker tag temp/temp:${TAG} ${IMAGE_NAME_ROOT}${TAG}:latest
+            exit 0
           fi
           printf "${{ env.GITHUB_TOKEN}}" | docker login docker.pkg.github.com -u $GITHUB_OWNER --password-stdin
           docker pull ${IMAGE_NAME_ROOT}${TAG}:latest
@@ -273,19 +275,27 @@ jobs:
           TAG: ${{ steps.tag_normalizer.outputs.tag }}
         working-directory: ./build/machinekit-hal
 
-      - name: Build Machinekit-HAL debian package
+      - name: Build Machinekit-HAL Debian package for ${{ matrix.osVersion}}, ${{ matrix.architecture }}
         run: |
           scripts/build_docker -i $DOCKER_IMAGE -t $TAG -c deb -n
         env:
           TAG: ${{ steps.tag_normalizer.outputs.tag }}
-          DOCKER_IMAGE: 'temp/temp:${{ steps.tag_normalizer.outputs.tag }}'
+          DOCKER_IMAGE: 'temp/temp'
         working-directory: ./build/machinekit-hal  
 
       - name: Sign the package with Machinekit Builder Signer Key
-        run: echo "AHOJ"
+        run: echo "Not implemented yet"
+
+      - name: Prepare build artifact for upload
+        run: |
+          mkdir machinekit-hal-debian
+          find ./build -depth -not \( -path "." -or -path "./build" -or -path "./build/machinekit-hal" -or -path "./build/machinekit-hal/*" \) -print0 | xargs -0 -t -I '{}' cp -v '{}' ./machinekit-hal-debian
 
       - name: Upload built package for Debian ${{ matrix.osVersion}}, ${{ matrix.architecture }} as an artifact
-        run: echo "AHOJ"
+        uses: actions/upload-artifact@v1
+        with:
+          name: machinekit-hal-debian-${{ matrix.architecture }}-${{ matrix.osVersion }}-${{ github.sha}}
+          path: machinekit-hal-debian
 
   testMachinekitHALBuild:
     runs-on: ubuntu-latest
@@ -297,13 +307,49 @@ jobs:
 
     steps:
       - name: Clone Machinekit-HAL repository
-        run: echo "AHOJ"
+        uses: actions/checkout@v2
+        with:
+          ref: '${{ github.event.ref }}'
+          path: 'build/machinekit-hal'
+      
+      - name: Prepare Machinekit-HAL Debian builder Docker image suffix
+        id: tag_normalizer
+        run: |
+          VER=""
+          case "${{ matrix.osVersion }}" in
+            "jessie")
+              VER="8"
+              ;;
+            "stretch")
+              VER="9"
+              ;;
+            "buster")
+              VER="10"
+              ;;
+            "bullseye")
+              VER="11"
+              ;;
+          esac
+          TAG="${{ matrix.architecture }}_$VER"
+          printf "Tag for this job is $TAG\n"
+          echo "::set-output name=tag::${TAG}"
 
-      - name: Prepare Docker image
-        run: echo "AHOJ"
-
-      - name: Build Machinekit-HAL Run-In-Place
-        run: echo "AHOJ"
+      - name: Prepare the Docker image
+        run: |
+          if [ "${{ needs.prepareState.outputs.BuildDockerImages }}" == "true" ]; then
+            scripts/build_debian_docker_image -r temp -i temp -t ${TAG}
+            docker tag temp/temp:${TAG} ${IMAGE_NAME_ROOT}${TAG}:latest
+            exit 0
+          fi
+          printf "${{ env.GITHUB_TOKEN}}" | docker login docker.pkg.github.com -u $GITHUB_OWNER --password-stdin
+          docker pull ${IMAGE_NAME_ROOT}${TAG}:latest
+          docker tag ${IMAGE_NAME_ROOT}${TAG}:latest temp/temp:${TAG}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_NAME_ROOT: ${{ env.ImageNameRoot }}
+          GITHUB_OWNER: ${{ github.event.repository.owner.name }}
+          TAG: ${{ steps.tag_normalizer.outputs.tag }}
+        working-directory: ./build/machinekit-hal
 
       - name: Execute Runtests
         run: echo "AHOJ"
@@ -328,19 +374,47 @@ jobs:
       fail-fast: false
     
     steps:
-      - name: Download settings file from GitHub storage
-        run: echo "AHOJ"
-
       - name: Clone Machinekit-HAL repository
-        run: echo "AHOJ"
+        uses: actions/checkout@v2
+        with:
+          ref: '${{ github.event.ref }}'
+          path: 'build/machinekit-hal'
+      
+      - name: Prepare Machinekit-HAL Debian builder Docker image suffix
+        id: tag_normalizer
+        run: |
+          VER=""
+          case "${{ matrix.osVersion }}" in
+            "jessie")
+              VER="8"
+              ;;
+            "stretch")
+              VER="9"
+              ;;
+            "buster")
+              VER="10"
+              ;;
+            "bullseye")
+              VER="11"
+              ;;
+          esac
+          TAG="${{ matrix.architecture }}_$VER"
+          printf "Tag for this job is $TAG\n"
+          echo "::set-output name=tag::${TAG}"
 
       - name: Build the docker image for ${{ matrix.osVersion}}, ${{ matrix.architecture }} Builder
-        run: echo "AHOJ"
+        run: |
+          scripts/build_debian_docker_image -r temp -i temp -t ${TAG}
+          docker tag temp/temp:${TAG} ${IMAGE_NAME_ROOT}${TAG}:latest
+          exit 0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_NAME_ROOT: ${{ env.ImageNameRoot }}
+          GITHUB_OWNER: ${{ github.event.repository.owner.name }}
+          TAG: ${{ steps.tag_normalizer.outputs.tag }}
+        working-directory: ./build/machinekit-hal
 
       - name: Upload the container image to repository's Github Packages registry
-        run: echo "AHOJ"
-
-      - name: Do the QUAY thing
         run: echo "AHOJ"
 
   uploadMachinekitHALDebianPackages:
