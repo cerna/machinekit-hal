@@ -420,6 +420,7 @@ jobs:
           printf "Tag for this job is $TAG\n"
           echo "::set-output name=tag::${TAG}"
 
+        # Docker image temp/temp is temporary until the build script is changed accordingly
       - name: Build the docker image for ${{ matrix.osVersion}}, ${{ matrix.architecture }} Builder
         run: |
           scripts/build_debian_docker_image -r temp -i temp -t ${TAG}
