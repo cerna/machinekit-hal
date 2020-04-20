@@ -159,14 +159,14 @@ jobs:
         for i in ${test_array[@]}
         do
           IMAGENAME="${IMAGE_NAME_ROOT}$i"
-          IMAGESHA=$(printf "${INPUT_JSON}" | jq -r --arg IMAGENAME "$IMAGENAME" '.data.repository.registryPackagesForQuery.nodes[] | select(.name == $IMAGENAME).version.sha256')
+          IMAGESHA=$(jq -r --arg IMAGENAME "$IMAGENAME" '.data.repository.registryPackagesForQuery.nodes[] | select(.name == $IMAGENAME).version.sha256' ${INPUT_JSON_FILE})
           if [ -z "$IMAGESHA" ]; then
             printf "Docker image $IMAGENAME:latest does not exist in registry docker.pkg.github.com/$REPOSITORY\n"
             ((MISSING=MISSING+1))
           fi
         done
         if [ $MISSING -gt 0 ]; then
-          printf "There is $MISSING Docker images\n"
+          printf "Registry is missing $MISSING Docker image(s)\n"
           echo ::set-env name=BuildDockerImage::true
         fi
       env:
@@ -390,7 +390,7 @@ jobs:
           - osVersion: 'jessie'
             architecture: 'arm64'
       fail-fast: true
-    
+
     steps:
       - name: Clone Machinekit-HAL repository
         uses: actions/checkout@v2
