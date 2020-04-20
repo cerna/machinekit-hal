@@ -107,22 +107,6 @@ jobs:
         DOCKER_REGEX: '^scripts/(((containers/){0,1}buildsystem/debian/.{1,})|build_debian_docker_image)$'
       working-directory: ./machinekit-hal
 
-    - name: Check on which architecture the workflow is running on
-      id: runtime_architecture
-      run: |
-        ARCHITECTURE=$(uname --machine)
-        RENAMEARCH=""
-        case "$ARCHITECTURE" in
-          "x86_64")
-            RENAMEARCH="amd64"
-            ;;
-          *)
-            echo "Architecture $ARCHITECTURE is unrecognized"
-            exit 1
-            ;;
-        esac
-        echo "This job is going to use $RENAMEARCH as an achitecture tag"
-
     - name: Build a GraphQL query for questioning Github Packages Docker registry
       if: env.BuildDockerImage != 'true'
       run: |
@@ -258,23 +242,25 @@ jobs:
           printf "Tag for this job is $TAG\n"
           echo "::set-output name=tag::${TAG}"
 
+        # Docker image temp/temp is temporary until the build script is changed accordingly
       - name: Prepare the Docker image
         run: |
           if [ "${{ needs.prepareState.outputs.BuildDockerImages }}" == "true" ]; then
             scripts/build_debian_docker_image -r temp -i temp -t ${TAG}
-            docker tag temp/temp:${TAG} ${IMAGE_NAME_ROOT}${TAG}:latest
+            docker tag temp/temp:${TAG} ${IMAGE_NAME_BASE}${TAG}:latest
             exit 0
           fi
           printf "${{ env.GITHUB_TOKEN}}" | docker login docker.pkg.github.com -u $GITHUB_OWNER --password-stdin
-          docker pull ${IMAGE_NAME_ROOT}${TAG}:latest
-          docker tag ${IMAGE_NAME_ROOT}${TAG}:latest temp/temp:${TAG}
+          docker pull ${IMAGE_NAME_BASE}${TAG}:latest
+          docker tag ${IMAGE_NAME_BASE}${TAG}:latest temp/temp:${TAG}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE_NAME_ROOT: ${{ env.ImageNameRoot }}
+          IMAGE_NAME_BASE: 'docker.pkg.github.com/${{ github.repository }}/${{ env.ImageNameRoot }}'
           GITHUB_OWNER: ${{ github.event.repository.owner.name }}
           TAG: ${{ steps.tag_normalizer.outputs.tag }}
         working-directory: ./build/machinekit-hal
 
+        # Docker image temp/temp is temporary until the build script is changed accordingly
       - name: Build Machinekit-HAL Debian package for ${{ matrix.osVersion}}, ${{ matrix.architecture }}
         run: |
           scripts/build_docker -i $DOCKER_IMAGE -t $TAG -c deb -n
@@ -302,7 +288,7 @@ jobs:
     needs: prepareState
     strategy:
       matrix:
-        osVersion: ['jessie', 'stretch', 'buster', 'bullseye']
+        osVersion: ['jessie', 'stretch', 'buster']
       fail-fast: false
 
     steps:
@@ -311,7 +297,24 @@ jobs:
         with:
           ref: '${{ github.event.ref }}'
           path: 'build/machinekit-hal'
-      
+
+      - name: Check on which architecture the workflow is running on
+        id: runtime_architecture
+        run: |
+          ARCHITECTURE=$(uname --machine)
+          RENAMEARCH=""
+          case "$ARCHITECTURE" in
+            "x86_64")
+              RENAMEARCH="amd64"
+              ;;
+            *)
+              printf "Architecture $ARCHITECTURE is unrecognized\n"
+              exit 1
+              ;;
+          esac
+          printf "This job is going to use $RENAMEARCH as an achitecture tag\n"
+          echo "::set-output name=architecture::$RENAMEARCH"
+
       - name: Prepare Machinekit-HAL Debian builder Docker image suffix
         id: tag_normalizer
         run: |
@@ -330,48 +333,63 @@ jobs:
               VER="11"
               ;;
           esac
-          TAG="${{ matrix.architecture }}_$VER"
+          TAG="${ARCHITECTURE}_${VER}"
           printf "Tag for this job is $TAG\n"
-          echo "::set-output name=tag::${TAG}"
+          echo "::set-output name=tag::$TAG"
+        env:
+          ARCHITECTURE: ${{ steps.runtime_architecture.outputs.architecture }}
 
+        # Docker image temp/temp is temporary until the build script is changed accordingly
       - name: Prepare the Docker image
         run: |
           if [ "${{ needs.prepareState.outputs.BuildDockerImages }}" == "true" ]; then
             scripts/build_debian_docker_image -r temp -i temp -t ${TAG}
-            docker tag temp/temp:${TAG} ${IMAGE_NAME_ROOT}${TAG}:latest
+            docker tag temp/temp:${TAG} ${IMAGE_NAME_BASE}${TAG}:latest
             exit 0
           fi
           printf "${{ env.GITHUB_TOKEN}}" | docker login docker.pkg.github.com -u $GITHUB_OWNER --password-stdin
-          docker pull ${IMAGE_NAME_ROOT}${TAG}:latest
-          docker tag ${IMAGE_NAME_ROOT}${TAG}:latest temp/temp:${TAG}
+          docker pull ${IMAGE_NAME_BASE}${TAG}:latest
+          docker tag ${IMAGE_NAME_BASE}${TAG}:latest temp/temp:${TAG}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE_NAME_ROOT: ${{ env.ImageNameRoot }}
+          IMAGE_NAME_BASE: 'docker.pkg.github.com/${{ github.repository }}/${{ env.ImageNameRoot }}'
           GITHUB_OWNER: ${{ github.event.repository.owner.name }}
           TAG: ${{ steps.tag_normalizer.outputs.tag }}
         working-directory: ./build/machinekit-hal
 
+        # Docker image temp/temp is temporary until the build script is changed accordingly
       - name: Execute Runtests
-        run: echo "AHOJ"
+        run: |
+          scripts/build_docker -i $DOCKER_IMAGE -t $TAG -c test
+        env:
+          TAG: ${{ steps.tag_normalizer.outputs.tag }}
+          DOCKER_IMAGE: 'temp/temp'
+        working-directory: ./build/machinekit-hal 
 
       - name: Execute CMOCKA UNIT tests
-        run: echo "AHOJ"
+        run: printf "Not yet implemented\n"
 
       - name: Execute Python nosetests
-        run: echo "AHOJ"
+        run: printf "Not yet implemented\n"
 
+  # This has a chance to cause problems when developing multiple branches simultaneously
+  # all or some of which use different builder configuration, one way how to solve it is 
+  # to use different tags for different branches, but with the current state with Github
+  # Packages when one cannot delete public packages (there is discussion on github.community
+  # it will be) and fact that Github doesn't say how much space is available for Open Source
+  # repository, I am going to let it be limited to :latest for now
   buildContainerImagesForUpload:
     runs-on: ubuntu-latest
-    if: needs.prepareState.outputs.BuildDockerImages == 'true'
+    if: needs.prepareState.outputs.BuildDockerImages == 'true' && github.event_name == 'push'
     needs: [buildMachinekitHALDebianPackages, testMachinekitHALBuild, prepareState]
     strategy:
       matrix:
-        osVersion: ['jessie', 'stretch', 'buster', 'bullseye']
+        osVersion: ['jessie', 'stretch', 'buster']
         architecture: ['i386', 'amd64', 'armhf', 'arm64']
         exclude:
           - osVersion: 'jessie'
             architecture: 'arm64'
-      fail-fast: false
+      fail-fast: true
     
     steps:
       - name: Clone Machinekit-HAL repository
@@ -405,26 +423,32 @@ jobs:
       - name: Build the docker image for ${{ matrix.osVersion}}, ${{ matrix.architecture }} Builder
         run: |
           scripts/build_debian_docker_image -r temp -i temp -t ${TAG}
-          docker tag temp/temp:${TAG} ${IMAGE_NAME_ROOT}${TAG}:latest
+          docker tag temp/temp:${TAG} ${IMAGE_NAME_BASE}${TAG}:latest
           exit 0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE_NAME_ROOT: ${{ env.ImageNameRoot }}
-          GITHUB_OWNER: ${{ github.event.repository.owner.name }}
+          IMAGE_NAME_BASE: 'docker.pkg.github.com/${{ github.repository }}/${{ env.ImageNameRoot }}'
           TAG: ${{ steps.tag_normalizer.outputs.tag }}
         working-directory: ./build/machinekit-hal
 
       - name: Upload the container image to repository's Github Packages registry
-        run: echo "AHOJ"
+        run: |
+          printf "${{ env.GITHUB_TOKEN}}" | docker login docker.pkg.github.com -u $GITHUB_OWNER --password-stdin
+          docker push ${IMAGE_NAME_BASE}${TAG}:latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_OWNER: ${{ github.event.repository.owner.name }}
+          IMAGE_NAME_BASE: 'docker.pkg.github.com/${{ github.repository }}/${{ env.ImageNameRoot }}'
+          TAG: ${{ steps.tag_normalizer.outputs.tag }}
 
   uploadMachinekitHALDebianPackages:
     runs-on: ubuntu-latest
     if: needs.prepareState.outputs.HasCloudsmithToken == 'true'
-    needs: [buildContainerImagesForUpload, prepareState]
+    needs: [buildMachinekitHALDebianPackages, testMachinekitHALBuild, prepareState]
     
     steps:
       - name: Download built artifacts from GitHub storage
-        run: echo "AHOJ"
+        run: printf "Not yet implemented\n"
 
       - name: Upload the Debian packages to Cloudsmith hosting service
-        run: echo "AHOJ"
+        run: printf "Not yet implemented\n"
