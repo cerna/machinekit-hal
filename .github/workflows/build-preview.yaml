@@ -215,6 +215,8 @@ jobs:
       fail-fast: false
     
     steps:
+      -run: |
+        printf "${{ toJson(needs.prepareState.outputs.MainMatrix.*.osVersionNumber) }}"
       - name: Clone Machinekit-HAL repository
         uses: actions/checkout@v2
         with:
