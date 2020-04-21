@@ -65,7 +65,7 @@ jobs:
         OS_MATRIX=$(printf "$MAIN_MATRIX" | jq -c '{include: [.include[] | del(.architecture)] | unique}')
         echo "::set-output name=matrix::$MAIN_MATRIX"
         echo "::set-output name=osMatrix::$OS_MATRIX"
-        printf "$MAIN_MATRIX\n$OS_MATRIX\n"
+        printf "JSON object for Main Matrix:\n====\n$MAIN_MATRIX\nJSON object for OS Matrix:\n====\n$OS_MATRIX\n"
       env:
         BASE_JSON: '{"include":[{"osVersionCodename":"jessie","osVersionNumber":8,"architecture":"i386"},{"osVersionCodename":"stretch","osVersionNumber":9,"architecture":"i386"},{"osVersionCodename":"buster","osVersionNumber":10,"architecture":"i386"},{"osVersionCodename":"jessie","osVersionNumber":8,"architecture":"amd64"},{"osVersionCodename":"stretch","osVersionNumber":9,"architecture":"amd64"},{"osVersionCodename":"buster","osVersionNumber":10,"architecture":"amd64"},{"osVersionCodename":"jessie","osVersionNumber":8,"architecture":"armhf"},{"osVersionCodename":"stretch","osVersionNumber":9,"architecture":"armhf"},{"osVersionCodename":"buster","osVersionNumber":10,"architecture":"armhf"},{"osVersionCodename":"stretch","osVersionNumber":9,"architecture":"arm64"},{"osVersionCodename":"buster","osVersionNumber":10,"architecture":"arm64"}]}'
 
