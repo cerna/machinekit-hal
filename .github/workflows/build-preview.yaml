@@ -49,6 +49,7 @@ jobs:
       BuildDockerImages: ${{ env.BuildDockerImage }}
       HasCloudsmithToken: ${{ steps.cloudsmith_checker.outputs.tokenPresent }}
       HasSigningKey: ${{ steps.signing_key_checker.outputs.keyPresent }}
+      MainMatrix: ${{ steps.matrix_normalizer.outputs.matrix }}
 
     steps:
     - name: Show GitHub context as a JSON
@@ -56,6 +57,10 @@ jobs:
         echo "$GITHUB_CONTEXT"
       env:
         GITHUB_CONTEXT: ${{ toJson(github) }}
+    
+    - name: Prepare job matrix for subsequent jobs
+      id: matrix_normalizer
+      run: echo "::set-output name=matrix::{\"include\":[{\"osVersionCodename\":\"jessie\",\"osVersionNumber\":8,\"architecture\":\"i386\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"i386\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"i386\"},{\"osVersionCodename\":\"jessie\",\"osVersionNumber\":8,\"architecture\":\"amd64\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"amd64\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"amd64\"},{\"osVersionCodename\":\"jessie\",\"osVersionNumber\":8,\"architecture\":\"armhf\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"armhf\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"armhf\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"arm64\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"arm64\"}]}"
 
       # Fetch the whole history here as there is no way of knowing how many commits there were in push event
     - name: Deep clone Machinekit-HAL repository
@@ -206,12 +211,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: prepareState
     strategy:
-      matrix:
-        osVersion: ['jessie', 'stretch', 'buster']
-        architecture: ['i386', 'amd64', 'armhf', 'arm64']
-        exclude:
-          - osVersion: 'jessie'
-            architecture: 'arm64'
+      matrix: ${{fromJson(needs.prepareState.outputs.MainMatrix)}}
       fail-fast: false
     
     steps:
