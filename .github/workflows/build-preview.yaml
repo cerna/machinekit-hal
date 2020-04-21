@@ -247,7 +247,7 @@ jobs:
         working-directory: ./build/machinekit-hal
 
         # Docker image temp/temp is temporary until the build script is changed accordingly
-      - name: Build Machinekit-HAL Debian package for ${{ matrix.osVersion}}, ${{ matrix.architecture }}
+      - name: Build Machinekit-HAL Debian package for ${{ matrix.osVersionCodename}}, ${{ matrix.architecture }}
         run: |
           scripts/build_docker -i $DOCKER_IMAGE -t $TAG -c deb -n
         env:
@@ -263,10 +263,10 @@ jobs:
           mkdir machinekit-hal-debian
           find ./build -depth -not \( -path "." -or -path "./build" -or -path "./build/machinekit-hal" -or -path "./build/machinekit-hal/*" \) -print0 | xargs -0 -t -I '{}' cp -v '{}' ./machinekit-hal-debian
 
-      - name: Upload built package for Debian ${{ matrix.osVersion}}, ${{ matrix.architecture }} as an artifact
+      - name: Upload built package for Debian ${{ matrix.osVersionCodename}}, ${{ matrix.architecture }} as an artifact
         uses: actions/upload-artifact@v1
         with:
-          name: machinekit-hal-debian-${{ matrix.architecture }}-${{ matrix.osVersion }}-${{ github.sha}}
+          name: machinekit-hal-debian-${{ matrix.architecture }}-${{ matrix.osVersionNumber }}-${{ github.sha}}
           path: machinekit-hal-debian
 
   testMachinekitHALBuild:
@@ -355,7 +355,7 @@ jobs:
           path: 'build/machinekit-hal'
 
         # Docker image temp/temp is temporary until the build script is changed accordingly
-      - name: Build the docker image for ${{ matrix.osVersion}}, ${{ matrix.architecture }} Builder
+      - name: Build the docker image for ${{ matrix.osVersionCodename}}, ${{ matrix.architecture }} Builder
         run: |
           scripts/build_debian_docker_image -r temp -i temp -t ${TAG}
           docker tag temp/temp:${TAG} ${IMAGE_NAME_BASE}${TAG}:latest
