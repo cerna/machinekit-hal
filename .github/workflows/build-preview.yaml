@@ -44,6 +44,7 @@ env:
 
 jobs:
   prepareState:
+    name: Prepare data used in subsequent jobs
     runs-on: ubuntu-latest
     outputs:
       BuildDockerImages: ${{ env.BuildDockerImage }}
@@ -51,6 +52,7 @@ jobs:
       HasSigningKey: ${{ steps.signing_key_checker.outputs.keyPresent }}
       MainMatrix: ${{ steps.matrix_normalizer.outputs.matrix }}
       OsVersionsMatrix: ${{ steps.matrix_normalizer.outputs.osMatrix }}
+
     steps:
     - name: Show GitHub context as a JSON
       run: |
@@ -215,6 +217,7 @@ jobs:
         SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
   
   buildMachinekitHALDebianPackages:
+    name: Build Machinekit HAL packages for Debian ${{ matrix.osVersionCodename }}, ${{ matrix.architecture }}
     runs-on: ubuntu-latest
     needs: prepareState
     strategy:
@@ -270,6 +273,7 @@ jobs:
           path: machinekit-hal-debian
 
   testMachinekitHALBuild:
+    name: Test Machinekit HAL code on Debian ${{ matrix.osVersionCodename }}
     runs-on: ubuntu-latest
     needs: prepareState
     strategy:
@@ -340,6 +344,7 @@ jobs:
   # it will be) and fact that Github doesn't say how much space is available for Open Source
   # repository, I am going to let it be limited to :latest for now
   buildContainerImagesForUpload:
+    name: Build Machinekit HAL builder Docker image for Debian ${{ matrix.osVersionCodename }}, ${{ matrix.architecture }}
     runs-on: ubuntu-latest
     if: needs.prepareState.outputs.BuildDockerImages == 'true' && github.event_name == 'push'
     needs: [buildMachinekitHALDebianPackages, testMachinekitHALBuild, prepareState]
