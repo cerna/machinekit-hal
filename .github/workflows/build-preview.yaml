@@ -216,7 +216,7 @@ jobs:
     
     steps:
       -run: |
-        printf "${{ toJson(fromJson(needs.prepareState.outputs.MainMatrix).*.osVersionNumber) }}\n"
+        printf "${{ toJson(fromJson(needs.prepareState.outputs.MainMatrix)) }}\n"
       - name: Clone Machinekit-HAL repository
         uses: actions/checkout@v2
         with:
