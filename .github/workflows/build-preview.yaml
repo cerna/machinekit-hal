@@ -62,7 +62,7 @@ jobs:
       id: matrix_normalizer
       run: |
         MAIN_MATRIX="$BASE_JSON"
-        OS_MATRIX=$(printf "$MAIN_MATRIX" | jq '{include: [.include[] | del(.architecture)] | unique}')
+        OS_MATRIX=$(printf "$MAIN_MATRIX" | jq -c '{include: [.include[] | del(.architecture)] | unique}')
         echo "::set-output name=matrix::$MAIN_MATRIX"
         echo "::set-output name=osMatrix::$OS_MATRIX"
         printf "$MAIN_MATRIX\n$OS_MATRIX\n"
