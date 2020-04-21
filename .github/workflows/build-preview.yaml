@@ -37,6 +37,9 @@ on:
     - '*'
 
 env:
+  # DANGER: Changing this value will mean new Docker image name!
+  #         Public Docker images in GitHub Packages cannot be deleted,
+  #         every change will stay visible 'forever' in form of old packages
   ImageNameRoot: 'machinekit-hal-debian-builder-v'
 
 jobs:
