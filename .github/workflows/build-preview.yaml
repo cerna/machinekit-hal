@@ -90,7 +90,7 @@ jobs:
           printf "This is new branch\n"
           exit 0
         fi
-        if ! [ git cat-file -e ${BEFORE}^{commit} ]; then
+        if ! git rev-parse -q --verify "$BEFORE^{commit}" > /dev/null; then
           printf "Commit $BEFORE does not exists, this is probably force push\n"
           exit 0
         fi
@@ -167,6 +167,8 @@ jobs:
         if [ $MISSING -gt 0 ]; then
           printf "Registry is missing $MISSING Docker image(s)\n"
           echo ::set-env name=BuildDockerImage::true
+        else
+          printf "All images present in registry, no missing packages waiting to be build\n"  
         fi
       env:
         IMAGE_SUFFIX_ARRAY: 'amd64_8 amd64_9 amd64_10 arm64_9 arm64_10 i386_8 i386_9 i386_10 armhf_8 armhf_9 armhf_10'
