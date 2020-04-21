@@ -50,7 +50,7 @@ jobs:
       HasCloudsmithToken: ${{ steps.cloudsmith_checker.outputs.tokenPresent }}
       HasSigningKey: ${{ steps.signing_key_checker.outputs.keyPresent }}
       MainMatrix: ${{ steps.matrix_normalizer.outputs.matrix }}
-
+      OsVersionsMatrix: ${{ steps.matrix_normalizer.outputs.osMatrix }}
     steps:
     - name: Show GitHub context as a JSON
       run: |
@@ -60,7 +60,14 @@ jobs:
     
     - name: Prepare job matrix for subsequent jobs
       id: matrix_normalizer
-      run: echo "::set-output name=matrix::{\"include\":[{\"osVersionCodename\":\"jessie\",\"osVersionNumber\":8,\"architecture\":\"i386\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"i386\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"i386\"},{\"osVersionCodename\":\"jessie\",\"osVersionNumber\":8,\"architecture\":\"amd64\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"amd64\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"amd64\"},{\"osVersionCodename\":\"jessie\",\"osVersionNumber\":8,\"architecture\":\"armhf\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"armhf\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"armhf\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"arm64\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"arm64\"}]}"
+      run: |
+        MAIN_MATRIX="$BASE_JSON"
+        OS_MATRIX=$(printf "$MAIN_MATRIX" | jq '{include: [.include[] | del(.architecture)] | unique}')
+        #{\"include\":[{\"osVersionCodename\":\"jessie\",\"osVersionNumber\":8,\"architecture\":\"i386\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"i386\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"i386\"},{\"osVersionCodename\":\"jessie\",\"osVersionNumber\":8,\"architecture\":\"amd64\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"amd64\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"amd64\"},{\"osVersionCodename\":\"jessie\",\"osVersionNumber\":8,\"architecture\":\"armhf\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"armhf\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"armhf\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"arm64\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"arm64\"}]}
+        echo "::set-output name=matrix::$MAIN_MATRIX"
+        echo "::set-output name=osMatrix::$OS_MATRIX"
+      env:
+        BASE_JSON: '{\"include\":[{\"osVersionCodename\":\"jessie\",\"osVersionNumber\":8,\"architecture\":\"i386\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"i386\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"i386\"},{\"osVersionCodename\":\"jessie\",\"osVersionNumber\":8,\"architecture\":\"amd64\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"amd64\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"amd64\"},{\"osVersionCodename\":\"jessie\",\"osVersionNumber\":8,\"architecture\":\"armhf\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"armhf\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"armhf\"},{\"osVersionCodename\":\"stretch\",\"osVersionNumber\":9,\"architecture\":\"arm64\"},{\"osVersionCodename\":\"buster\",\"osVersionNumber\":10,\"architecture\":\"arm64\"}]}'
 
       # Fetch the whole history here as there is no way of knowing how many commits there were in push event
     - name: Deep clone Machinekit-HAL repository
@@ -215,8 +222,6 @@ jobs:
       fail-fast: false
     
     steps:
-      -run: |
-        printf "${{ toJson(fromJson(needs.prepareState.outputs.MainMatrix)) }}\n"
       - name: Clone Machinekit-HAL repository
         uses: actions/checkout@v2
         with:
@@ -268,8 +273,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: prepareState
     strategy:
-      matrix:
-        osVersion: ${{ fromJson(needs.prepareState.outputs.MainMatrix.*.osVersionNumber) }}
+      matrix: ${{ fromJson(needs.prepareState.outputs.OsVersionsMatrix) }}
       fail-fast: false
 
     steps:
@@ -296,30 +300,6 @@ jobs:
           printf "This job is going to use $RENAMEARCH as an achitecture tag\n"
           echo "::set-output name=architecture::$RENAMEARCH"
 
-      - name: Prepare Machinekit-HAL Debian builder Docker image suffix
-        id: tag_normalizer
-        run: |
-          VER=""
-          case "${{ matrix.osVersion }}" in
-            "jessie")
-              VER="8"
-              ;;
-            "stretch")
-              VER="9"
-              ;;
-            "buster")
-              VER="10"
-              ;;
-            "bullseye")
-              VER="11"
-              ;;
-          esac
-          TAG="${ARCHITECTURE}_${VER}"
-          printf "Tag for this job is $TAG\n"
-          echo "::set-output name=tag::$TAG"
-        env:
-          ARCHITECTURE: ${{ steps.runtime_architecture.outputs.architecture }}
-
         # Docker image temp/temp is temporary until the build script is changed accordingly
       - name: Prepare the Docker image
         run: |
@@ -335,7 +315,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGE_NAME_BASE: 'docker.pkg.github.com/${{ github.repository }}/${{ env.ImageNameRoot }}'
           GITHUB_OWNER: ${{ github.event.repository.owner.name }}
-          TAG: ${{ steps.tag_normalizer.outputs.tag }}
+          TAG: '${{ steps.runtime_architecture.outputs.architecture }}_${{ matrix.osVersionNumber }}'
         working-directory: ./build/machinekit-hal
 
         # Docker image temp/temp is temporary until the build script is changed accordingly
@@ -343,7 +323,7 @@ jobs:
         run: |
           scripts/build_docker -i $DOCKER_IMAGE -t $TAG -c test
         env:
-          TAG: ${{ steps.tag_normalizer.outputs.tag }}
+          TAG: '${{ steps.runtime_architecture.outputs.architecture }}_${{ matrix.osVersionNumber }}'
           DOCKER_IMAGE: 'temp/temp'
         working-directory: ./build/machinekit-hal 
 
@@ -364,12 +344,7 @@ jobs:
     if: needs.prepareState.outputs.BuildDockerImages == 'true' && github.event_name == 'push'
     needs: [buildMachinekitHALDebianPackages, testMachinekitHALBuild, prepareState]
     strategy:
-      matrix:
-        osVersion: ['jessie', 'stretch', 'buster']
-        architecture: ['i386', 'amd64', 'armhf', 'arm64']
-        exclude:
-          - osVersion: 'jessie'
-            architecture: 'arm64'
+      matrix: ${{ fromJson(needs.prepareState.outputs.MainMatrix) }}
       fail-fast: true
 
     steps:
@@ -378,28 +353,6 @@ jobs:
         with:
           ref: '${{ github.event.ref }}'
           path: 'build/machinekit-hal'
-      
-      - name: Prepare Machinekit-HAL Debian builder Docker image suffix
-        id: tag_normalizer
-        run: |
-          VER=""
-          case "${{ matrix.osVersion }}" in
-            "jessie")
-              VER="8"
-              ;;
-            "stretch")
-              VER="9"
-              ;;
-            "buster")
-              VER="10"
-              ;;
-            "bullseye")
-              VER="11"
-              ;;
-          esac
-          TAG="${{ matrix.architecture }}_$VER"
-          printf "Tag for this job is $TAG\n"
-          echo "::set-output name=tag::${TAG}"
 
         # Docker image temp/temp is temporary until the build script is changed accordingly
       - name: Build the docker image for ${{ matrix.osVersion}}, ${{ matrix.architecture }} Builder
@@ -410,7 +363,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGE_NAME_BASE: 'docker.pkg.github.com/${{ github.repository }}/${{ env.ImageNameRoot }}'
-          TAG: ${{ steps.tag_normalizer.outputs.tag }}
+          TAG: '${{ matrix.architecture }}_${{ matrix.osVersionNumber }}'
         working-directory: ./build/machinekit-hal
 
       - name: Upload the container image to repository's Github Packages registry
@@ -421,7 +374,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_OWNER: ${{ github.event.repository.owner.name }}
           IMAGE_NAME_BASE: 'docker.pkg.github.com/${{ github.repository }}/${{ env.ImageNameRoot }}'
-          TAG: ${{ steps.tag_normalizer.outputs.tag }}
+          TAG: '${{ matrix.architecture }}_${{ matrix.osVersionNumber }}'
 
   uploadMachinekitHALDebianPackages:
     runs-on: ubuntu-latest
