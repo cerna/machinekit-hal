@@ -211,7 +211,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: prepareState
     strategy:
-      matrix: ${{fromJson(needs.prepareState.outputs.MainMatrix)}}
+      matrix: ${{ fromJson(needs.prepareState.outputs.MainMatrix) }}
       fail-fast: false
     
     steps:
@@ -220,28 +220,6 @@ jobs:
         with:
           ref: '${{ github.event.ref }}'
           path: 'build/machinekit-hal'
-      
-      - name: Prepare Machinekit-HAL Debian builder Docker image suffix
-        id: tag_normalizer
-        run: |
-          VER=""
-          case "${{ matrix.osVersion }}" in
-            "jessie")
-              VER="8"
-              ;;
-            "stretch")
-              VER="9"
-              ;;
-            "buster")
-              VER="10"
-              ;;
-            "bullseye")
-              VER="11"
-              ;;
-          esac
-          TAG="${{ matrix.architecture }}_$VER"
-          printf "Tag for this job is $TAG\n"
-          echo "::set-output name=tag::${TAG}"
 
         # Docker image temp/temp is temporary until the build script is changed accordingly
       - name: Prepare the Docker image
@@ -258,7 +236,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGE_NAME_BASE: 'docker.pkg.github.com/${{ github.repository }}/${{ env.ImageNameRoot }}'
           GITHUB_OWNER: ${{ github.event.repository.owner.name }}
-          TAG: ${{ steps.tag_normalizer.outputs.tag }}
+          TAG: '${{ matrix.architecture }}_${{ matrix.osVersionNumber }}'
         working-directory: ./build/machinekit-hal
 
         # Docker image temp/temp is temporary until the build script is changed accordingly
@@ -266,7 +244,7 @@ jobs:
         run: |
           scripts/build_docker -i $DOCKER_IMAGE -t $TAG -c deb -n
         env:
-          TAG: ${{ steps.tag_normalizer.outputs.tag }}
+          TAG: '${{ matrix.architecture }}_${{ matrix.osVersionNumber }}'
           DOCKER_IMAGE: 'temp/temp'
         working-directory: ./build/machinekit-hal  
 
@@ -289,7 +267,7 @@ jobs:
     needs: prepareState
     strategy:
       matrix:
-        osVersion: ['jessie', 'stretch', 'buster']
+        osVersion: ${{ fromJson(needs.prepareState.outputs.MainMatrix.*.osVersionNumber) }}
       fail-fast: false
 
     steps:
