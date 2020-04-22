@@ -400,7 +400,7 @@ jobs:
           TAG: '${{ matrix.architecture }}_${{ matrix.osVersionNumber }}'
       
       - name: Upload the container image to third party registry
-        if: ${{ needs.prepareState.outputs.HasSpecificDockerRegistry }} == 'true'
+        if: needs.prepareState.outputs.HasSpecificDockerRegistry == 'true'
         run: |
           printf "$DOCKER_REGISTRY_PASSWORD" | docker login ${DOCKER_REGISTRY_NAME} -u ${DOCKER_REGISTRY_USER} --password-stdin
           docker tag temp/temp:${TAG} ${IMAGE_NAME_BASE}${TAG}:${DOCKER_TAG}
