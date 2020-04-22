@@ -233,7 +233,7 @@ RUN if test $DISTRO_VER -eq 8; then \
 # Machinekit:  Configure apt
 
 # add Machinekit dependencies package archive
-RUN curl -1sLf 
+RUN curl -1sLf \
   'https://dl.cloudsmith.io/public/machinekit/machinekit/cfg/setup/bash.deb.sh' \
   | sudo bash \
   && apt-get update
