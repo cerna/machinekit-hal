@@ -122,7 +122,7 @@ jobs:
       env:
         BEFORE: ${{ steps.event_normalizer.outputs.before }}
         AFTER: ${{ steps.event_normalizer.outputs.after }}
-        DOCKER_REGEX: '^scripts/(((containers/){0,1}buildsystem/debian/.{1,})|build_debian_docker_image)$'
+        DOCKER_REGEX: '^(scripts/(((containers/){0,1}buildsystem/debian/.{1,})|build_debian_docker_image))|debian/.{1,0}$'
       working-directory: ./machinekit-hal
 
     - name: Build a GraphQL query for questioning Github Packages Docker registry
