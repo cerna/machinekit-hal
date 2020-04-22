@@ -405,7 +405,7 @@ jobs:
           docker tag temp/temp:${TAG} ${IMAGE_NAME_BASE}${TAG}:${DOCKER_TAG}
           docker push ${IMAGE_NAME_BASE}${TAG}:${DOCKER_TAG}
         env:
-          IMAGE_NAME_BASE: '${{ secrets.DOCKER_REGISTRY_PREFIX }}/${{ env.ImageNameRoot }}'
+          IMAGE_NAME_BASE: '${{ secrets.DOCKER_REGISTRY_NAME }}/${{ secrets.DOCKER_REGISTRY_PREFIX }}/${{ env.ImageNameRoot }}'
           TAG: '${{ matrix.architecture }}_${{ matrix.osVersionNumber }}'
           DOCKER_TAG: '${{ github.sha }}'
           DOCKER_REGISTRY_NAME: ${{ secrets.DOCKER_REGISTRY_NAME }}
