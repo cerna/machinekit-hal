@@ -344,7 +344,7 @@ jobs:
   # it will be) and fact that Github doesn't say how much space is available for Open Source
   # repository, I am going to let it be limited to :latest for now
   buildContainerImagesForUpload:
-    name: Build Machinekit HAL builder Docker image for Debian ${{ matrix.osVersionCodename }}, ${{ matrix.architecture }}
+    name: Build and upload Machinekit HAL builder Docker image for Debian ${{ matrix.osVersionCodename }}, ${{ matrix.architecture }}
     runs-on: ubuntu-latest
     if: needs.prepareState.outputs.BuildDockerImages == 'true' && github.event_name == 'push'
     needs: [buildMachinekitHALDebianPackages, testMachinekitHALBuild, prepareState]
@@ -381,7 +381,8 @@ jobs:
           IMAGE_NAME_BASE: 'docker.pkg.github.com/${{ github.repository }}/${{ env.ImageNameRoot }}'
           TAG: '${{ matrix.architecture }}_${{ matrix.osVersionNumber }}'
 
-  uploadMachinekitHALDebianPackages:
+  uploadMachinekitHALDebianPackagesToCloudsmith:
+    name: Upload Machinekit HAL Debian packages to Cloudsmith hosting service
     runs-on: ubuntu-latest
     if: needs.prepareState.outputs.HasCloudsmithToken == 'true'
     needs: [buildMachinekitHALDebianPackages, testMachinekitHALBuild, prepareState]
