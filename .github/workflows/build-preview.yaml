@@ -52,6 +52,7 @@ jobs:
       HasSigningKey: ${{ steps.signing_key_checker.outputs.keyPresent }}
       MainMatrix: ${{ steps.matrix_normalizer.outputs.matrix }}
       OsVersionsMatrix: ${{ steps.matrix_normalizer.outputs.osMatrix }}
+      HasSpecificDockerRegistry: ${{ steps.docker_registry_checker.outputs.hasRegistry }}
 
     steps:
     - name: Show GitHub context as a JSON
@@ -215,6 +216,21 @@ jobs:
         fi
       env:
         SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+
+    - name: Check if specific Docker Registry data is present in GitHub secrets storage
+      id: docker_registry_checker
+      run: |
+        if ! [ -z "$DOCKER_REGISTRY_USER" && -z "$DOCKER_REGISTRY_PASSWORD" && -z "$DOCKER_REGISTRY_PREFIX" && ]; then
+          printf "Docker Registry data found in GitHub secret storage, will try to upload\n"
+          echo "::set-output name=hasRegistry::true"
+        else
+           printf "Docker Registry data not found in GitHub secret storage\n"
+          echo "::set-output name=hasRegistry::false"
+        fi
+      env:
+        DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
+        DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+        DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
   
   buildMachinekitHALDebianPackages:
     name: Build Machinekit HAL packages for Debian ${{ matrix.osVersionCodename }}, ${{ matrix.architecture }}
