@@ -391,7 +391,7 @@ jobs:
 
       - name: Upload the container image to repository's Github Packages registry
         run: |
-          printf "$GITHUB_TOKEN" | docker login docker.pkg.github.com -u $GITHUB_OWNER --password-stdin
+          printf "$GITHUB_TOKEN" | docker login docker.pkg.github.com -u ${GITHUB_OWNER} --password-stdin
           docker push ${IMAGE_NAME_BASE}${TAG}:latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -402,7 +402,7 @@ jobs:
       - name: Upload the container image to third party registry
         if: ${{ needs.prepareState.outputs.HasSpecificDockerRegistry }} == 'true'
         run: |
-          printf "$DOCKER_REGISTRY_PASSWORD" | docker login ${DOCKER_REGISTRY_NAME} -u $GITHUB_OWNER --password-stdin
+          printf "$DOCKER_REGISTRY_PASSWORD" | docker login ${DOCKER_REGISTRY_NAME} -u ${DOCKER_REGISTRY_USER} --password-stdin
           docker tag temp/temp:${TAG} ${IMAGE_NAME_BASE}${TAG}:${DOCKER_TAG}
           docker push ${IMAGE_NAME_BASE}${TAG}:${DOCKER_TAG}
         env:
