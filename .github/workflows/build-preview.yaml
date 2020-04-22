@@ -198,7 +198,7 @@ jobs:
           printf "Cloudsmith.io authorization token found in GitHub secret storage, will try to upload\n"
           echo "::set-output name=tokenPresent::true"
         else
-           printf "Cloudsmith.io authorization token not found in GitHub secret storage\n"
+          printf "Cloudsmith.io authorization token not found in GitHub secret storage\n"
           echo "::set-output name=tokenPresent::false"
         fi
       env:
@@ -211,7 +211,7 @@ jobs:
           printf "Signing key found in GitHub secret storage, will try to sign\n"
           echo "::set-output name=keyPresent::true"
         else
-           printf "Signing key not found in GitHub secret storage\n"
+          printf "Signing key not found in GitHub secret storage\n"
           echo "::set-output name=keyPresent::false"
         fi
       env:
@@ -225,7 +225,7 @@ jobs:
           printf "Docker Registry data found in GitHub secret storage, will try to upload\n"
           echo "::set-output name=hasRegistry::true"
         else
-           printf "Docker Registry data not found in GitHub secret storage\n"
+          printf "Docker Registry data not found in GitHub secret storage\n"
           echo "::set-output name=hasRegistry::false"
         fi
       env:
@@ -425,4 +425,3 @@ jobs:
 
       - name: Upload the Debian packages to Cloudsmith hosting service
         run: printf "Not yet implemented\n"
-        
