@@ -218,6 +218,7 @@ jobs:
         SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
 
     - name: Check if specific Docker Registry data is present in GitHub secrets storage
+      if: env.BuildDockerImage == 'true'
       id: docker_registry_checker
       run: |
         if [ -n "$DOCKER_REGISTRY_NAME" -a -n "$DOCKER_REGISTRY_USER" -a -n "$DOCKER_REGISTRY_PASSWORD" -a -n "$DOCKER_REGISTRY_PREFIX" ]; then
