@@ -220,7 +220,7 @@ jobs:
     - name: Check if specific Docker Registry data is present in GitHub secrets storage
       id: docker_registry_checker
       run: |
-        if [ -n "$DOCKER_REGISTRY_USER" -a -n "$DOCKER_REGISTRY_PASSWORD" -a -n "$DOCKER_REGISTRY_PREFIX" ]; then
+        if [ -n "$DOCKER_REGISTRY_NAME" -a -n "$DOCKER_REGISTRY_USER" -a -n "$DOCKER_REGISTRY_PASSWORD" -a -n "$DOCKER_REGISTRY_PREFIX" ]; then
           printf "Docker Registry data found in GitHub secret storage, will try to upload\n"
           echo "::set-output name=hasRegistry::true"
         else
@@ -228,6 +228,7 @@ jobs:
           echo "::set-output name=hasRegistry::false"
         fi
       env:
+        DOCKER_REGISTRY_NAME: ${{ secrets.DOCKER_REGISTRY_NAME }}
         DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
         DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
         DOCKER_REGISTRY_PREFIX: ${{ secrets.DOCKER_REGISTRY_PREFIX }}
@@ -389,13 +390,27 @@ jobs:
 
       - name: Upload the container image to repository's Github Packages registry
         run: |
-          printf "${{ env.GITHUB_TOKEN}}" | docker login docker.pkg.github.com -u $GITHUB_OWNER --password-stdin
+          printf "$GITHUB_TOKEN" | docker login docker.pkg.github.com -u $GITHUB_OWNER --password-stdin
           docker push ${IMAGE_NAME_BASE}${TAG}:latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_OWNER: ${{ github.event.repository.owner.name }}
           IMAGE_NAME_BASE: 'docker.pkg.github.com/${{ github.repository }}/${{ env.ImageNameRoot }}'
           TAG: '${{ matrix.architecture }}_${{ matrix.osVersionNumber }}'
+      
+      - name: Upload the container image to repository's Github Packages registry
+        if: ${{ needs.prepareState.outputs.HasSpecificDockerRegistry }} == 'true'
+        run: |
+          printf "$DOCKER_REGISTRY_PASSWORD" | docker login ${DOCKER_REGISTRY_NAME} -u $GITHUB_OWNER --password-stdin
+          docker tag temp/temp:${TAG} ${IMAGE_NAME_BASE}${TAG}:${DOCKER_TAG}
+          docker push ${IMAGE_NAME_BASE}${TAG}:${DOCKER_TAG}
+        env:
+          IMAGE_NAME_BASE: '${{ secrets.DOCKER_REGISTRY_PREFIX }}/${{ env.ImageNameRoot }}'
+          TAG: '${{ matrix.architecture }}_${{ matrix.osVersionNumber }}'
+          DOCKER_TAG: '${{ github.sha }}'
+          DOCKER_REGISTRY_NAME: ${{ secrets.DOCKER_REGISTRY_NAME }}
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
 
   uploadMachinekitHALDebianPackagesToCloudsmith:
     name: Upload Machinekit HAL Debian packages to Cloudsmith hosting service
