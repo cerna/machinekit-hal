@@ -86,12 +86,14 @@ jobs:
         if [ "${{ github.event_name }}" == "push" ]; then
           echo "::set-output name=before::${{ github.event.before }}"
           echo "::set-output name=after::${{ github.sha }}"
+          printf "Output ::before set to ${{ github.event.before }}\nOutput ::before set to ${{ github.sha }}\n"
           exit 0
         fi
         if [ "${{ github.event_name }}" == "pull_request" ]; then
           echo "::set-output name=before::${{ github.event.base.sha }}"
           echo "::set-output name=after::${{ github.sha }}"
-          exit 1
+          printf "Output ::before set to ${{ github.event.base.repo.sha }}\nOutput ::before set to ${{ github.sha }}\n"
+          exit 0
         fi
         printf "Disallowed event type\n"
         exit 1
