@@ -92,7 +92,7 @@ jobs:
         if [ "${{ github.event_name }}" == "pull_request" ]; then
           echo "::set-output name=before::${{ github.event.base.sha }}"
           echo "::set-output name=after::${{ github.sha }}"
-          printf "Output ::before set to ${{ github.event.base.repo.sha }}\nOutput ::before set to ${{ github.sha }}\n"
+          printf "Output ::before set to ${{ github.event.base.sha }}\nOutput ::after set to ${{ github.sha }}\n"
           exit 0
         fi
         printf "Disallowed event type\n"
@@ -109,6 +109,7 @@ jobs:
         fi
         if ! git rev-parse -q --verify "$BEFORE^{commit}" > /dev/null; then
           printf "Commit $BEFORE does not exists, this is probably force push\n"
+          # TODO: This is ugly
           exit 0
         fi
         CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${BEFORE} ${AFTER})
