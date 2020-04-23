@@ -101,6 +101,8 @@ jobs:
       # Force-push checking should be done better, this implementation doesn't
       # take into account changes in the force push: How to get from Github API
       # the last SHA before push?
+      # There is also thread on GitHub.community about this issue:
+      # https://github.community/t5/GitHub-Actions/Workflow-paths-on-forced-pushs/m-p/49576
     - name: Check if Docker images related files were changed in this event
       run: |
         if [[ ${BEFORE} =~ ^0+$ ]]; then
@@ -192,6 +194,11 @@ jobs:
         IMAGE_NAME_ROOT: ${{ env.ImageNameRoot }}
         REPOSITORY_FULL: ${{ github.repository }}
         INPUT_JSON_FILE: 'DockerImagesInGithubPackagesResponse.json'
+      
+      # Not Yet Implemented: Check if the :latest Docker image in GitHub Packages is relevant to the current branch
+      #                      by way of implementing a new label in Docker build with SHA of Machinekit-HAL git commit,
+      #                      querying it here in workflow and then check if SHA is in history of this ref before
+      #                      ${{ steps.event_normalizer.outputs.before }} - if not, force rebuild
     
     - name: Check if Cloudsmith authorization token is present in GitHub secrets storage
       if: github.event_name == 'push'
