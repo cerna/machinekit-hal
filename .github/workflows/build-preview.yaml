@@ -168,12 +168,12 @@ jobs:
     - name: Check if all Debian builder Docker images are present
       if: env.BuildDockerImage != 'true'
       run: |
-        test_array=(${IMAGE_SUFFIX_ARRAY})
+        test_array=($(printf "$MATRIX_JSON" | jq -r '.include[] | [.architecture, .osVersionNumber|tostring] | join("_")'))
         MISSING=0
         for i in ${test_array[@]}
         do
           IMAGENAME="${IMAGE_NAME_ROOT}$i"
-          IMAGESHA=$(jq -r --arg IMAGENAME "$IMAGENAME" '.data.repository.registryPackages.nodes[] | select(.name == $IMAGENAME).version.sha256' ${INPUT_JSON_FILE})
+          IMAGESHA=$(jq -r --arg IMAGENAME "$IMAGENAME" '.data.repository.registryPackages.nodes[] | select(.name == $IMAGENAME).version.sha256 | select(.!=null)' ${INPUT_JSON_FILE})
           if [ -z "$IMAGESHA" ]; then
             printf "Docker image $IMAGENAME:latest does not exist in registry docker.pkg.github.com/$REPOSITORY_FULL\n"
             ((MISSING=MISSING+1))
@@ -186,7 +186,7 @@ jobs:
           printf "All images present in registry, no missing packages waiting to be build\n"  
         fi
       env:
-        IMAGE_SUFFIX_ARRAY: 'amd64_8 amd64_9 amd64_10 arm64_9 arm64_10 i386_8 i386_9 i386_10 armhf_8 armhf_9 armhf_10'
+        MATRIX_JSON: '${{ steps.matrix_normalizer.outputs.matrix }}'
         IMAGE_NAME_ROOT: ${{ env.ImageNameRoot }}
         REPOSITORY_FULL: ${{ github.repository }}
         INPUT_JSON_FILE: 'DockerImagesInGithubPackagesResponse.json'
