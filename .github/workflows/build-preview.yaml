@@ -265,7 +265,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGE_NAME_BASE: 'docker.pkg.github.com/${{ github.repository }}/${{ env.ImageNameRoot }}'
-          GITHUB_OWNER: ${{ github.event.repository.owner.name }}
+          GITHUB_OWNER: ${{ github.actor }}
           TAG: '${{ matrix.architecture }}_${{ matrix.osVersionNumber }}'
         working-directory: ./build/machinekit-hal
 
@@ -338,7 +338,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGE_NAME_BASE: 'docker.pkg.github.com/${{ github.repository }}/${{ env.ImageNameRoot }}'
-          GITHUB_OWNER: ${{ github.event.repository.owner.name }}
+          GITHUB_OWNER: ${{ github.actor }}
           TAG: '${{ steps.runtime_architecture.outputs.architecture }}_${{ matrix.osVersionNumber }}'
         working-directory: ./build/machinekit-hal
 
@@ -397,7 +397,7 @@ jobs:
           docker push ${IMAGE_NAME_BASE}${TAG}:latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_OWNER: ${{ github.event.repository.owner.name }}
+          GITHUB_OWNER: ${{ github.actor }}
           IMAGE_NAME_BASE: 'docker.pkg.github.com/${{ github.repository }}/${{ env.ImageNameRoot }}'
           TAG: '${{ matrix.architecture }}_${{ matrix.osVersionNumber }}'
       
