@@ -194,6 +194,7 @@ jobs:
         INPUT_JSON_FILE: 'DockerImagesInGithubPackagesResponse.json'
     
     - name: Check if Cloudsmith authorization token is present in GitHub secrets storage
+      if: github.event_name == 'push'
       id: cloudsmith_checker
       run: |
         if ! [ -z "$CLOUDSMITH_TOKEN" ]; then
@@ -207,6 +208,7 @@ jobs:
         CLOUDSMITH_TOKEN: ${{ secrets.CLOUDSMITH_TOKEN }}
 
     - name: Check if signing key is present in GitHub secrets storage
+      if: github.event_name == 'push'
       id: signing_key_checker
       run: |
         if ! [ -z "$SIGNING_KEY" ]; then
@@ -220,7 +222,7 @@ jobs:
         SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
 
     - name: Check if specific Docker Registry data is present in GitHub secrets storage
-      if: env.BuildDockerImage == 'true'
+      if: env.BuildDockerImage == 'true' && github.event_name == 'push'
       id: docker_registry_checker
       run: |
         if [ -n "$DOCKER_REGISTRY_NAME" -a -n "$DOCKER_REGISTRY_USER" -a -n "$DOCKER_REGISTRY_PASSWORD" -a -n "$DOCKER_REGISTRY_PREFIX" ]; then
@@ -279,6 +281,7 @@ jobs:
         working-directory: ./build/machinekit-hal  
 
       - name: Sign the package with Machinekit Builder Signer Key
+        if: github.event_name == 'push'
         run: echo "Not implemented yet"
 
       - name: Prepare build artifact for upload
@@ -418,7 +421,7 @@ jobs:
   uploadMachinekitHALDebianPackagesToCloudsmith:
     name: Upload Machinekit HAL Debian packages to Cloudsmith hosting service
     runs-on: ubuntu-latest
-    if: needs.prepareState.outputs.HasCloudsmithToken == 'true'
+    if: needs.prepareState.outputs.HasCloudsmithToken == 'true' && github.event_name == 'push'
     needs: [buildMachinekitHALDebianPackages, testMachinekitHALBuild, prepareState]
     
     steps:
