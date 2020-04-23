@@ -161,7 +161,7 @@ jobs:
         query: DockerImagesInGithubPackagesQuery.yaml
         outputFile: DockerImagesInGithubPackagesResponse.json
         logLevel: debug
-        owner: ${{ github.event.repository.owner.name }}
+        owner: ${{ github.event.repository.owner.login }}
         repository: ${{ github.event.repository.name }}
         inquiry: 'is:public ${{ env.ImageNameRoot }}'
       env:
