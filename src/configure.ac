@@ -731,12 +731,9 @@ then
     AC_MSG_ERROR([protoc not found - protobuf-compiler package not installed?])
 fi
 
-AC_PYTHON_MODULE(google.protobuf.descriptor, failed to import google.protobuf.descriptor
- - python-protobuf package missing? )
-AC_PYTHON_MODULE(google.protobuf.descriptor_pb2, failed to import google.protobuf.descriptor_pb2
- - python-protobuf package missing? )
-AC_PYTHON_MODULE(google.protobuf.compiler.plugin_pb2, failed to import google.protobuf.compiler.plugin_pb2
- - python-protobuf package missing? )
+AX_PYTHON_MODULE(google.protobuf.descriptor, 1)
+AX_PYTHON_MODULE(google.protobuf.descriptor_pb2, 1)
+AX_PYTHON_MODULE(google.protobuf.compiler.plugin_pb2, 1)
 
 PKG_CHECK_MODULES([JANSSON], [jansson > 2.4],
     [
@@ -805,12 +802,9 @@ PKG_CHECK_MODULES([LIBCGROUP], libcgroup,
 # pyftpdlib                                                                  #
 ##############################################################################
 
-AC_PYTHON_MODULE(pyftpdlib.authorizers, failed to import pyftpdlib.authorizers
- - python-pyftpdlib package missing or too old? )
-AC_PYTHON_MODULE(pyftpdlib.handlers, failed to import pyftpdlib.handlers
- - python-pyftpdlib package missing or too old? )
-AC_PYTHON_MODULE(pyftpdlib.servers, failed to import pyftpdlib.servers
- - python-pyftpdlib package missing or too old? )
+AX_PYTHON_MODULE(pyftpdlib.authorizers, 1)
+AX_PYTHON_MODULE(pyftpdlib.handlers, 1)
+AX_PYTHON_MODULE(pyftpdlib.servers, 1)
 
 
 ##############################################################################
@@ -1498,8 +1492,7 @@ AC_ARG_ENABLE(pydot,
     [  --enable-pydot      enable python-pydot graphing],
     [
     PYDOT=yes
-    AC_PYTHON_MODULE(pydot, failed to import pydot
-     - python-pydot package missing? )
+    AX_PYTHON_MODULE(pydot, 1)
 
     AC_PATH_PROG(XDOT, xdot, "none")
     if test $XDOT = "none"
