@@ -289,7 +289,10 @@ jobs:
 
       - name: Sign the package with Machinekit Builder Signer Key
         if: github.event_name == 'push'
-        run: echo "Not implemented yet"
+        run: |
+          echo "
+          echo "$SIGNING_KEY" | gpg --import
+          find /machinekit-hal -name *.deb -print0 | xargs "
 
       - name: Prepare build artifact for upload
         run: |
