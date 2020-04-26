@@ -405,15 +405,6 @@ RUN if test $DISTRO_VER -eq 10 -a -z "$SYS_ROOT"; then \
 # Customize the following to match the user's environment
 
 # Set up user ID inside container to match your ID
-ENV USER=travis
-ENV UID=1000
-ENV GID=1000
-ENV HOME=/home/${USER}
-ENV SHELL=/bin/bash
-ENV PATH=/usr/lib/ccache:/opt/gcc-linaro-hf/bin:/usr/sbin:/usr/bin:/sbin:/bin
-RUN echo "${USER}:x:${UID}:${GID}::${HOME}:${SHELL}" >> /etc/passwd
-RUN echo "${USER}:*:17967:0:99999:7:::" >> /etc/shadow
-RUN echo "${USER}:x:${GID}:" >> /etc/group
 
 # Customize the run environment to your taste
 # - bash prompt
@@ -421,6 +412,3 @@ RUN echo "${USER}:x:${GID}:" >> /etc/group
 RUN sed -i /etc/bash.bashrc \
     -e 's/^PS1=.*/PS1="\\h:\\W\\$ "/' \
     -e '$a alias ls="ls -aFs"'
-
-# Configure sudo, passwordless for everyone
-RUN echo "ALL	ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
