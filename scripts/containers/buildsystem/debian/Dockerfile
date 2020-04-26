@@ -408,3 +408,4 @@ RUN if test $DISTRO_VER -eq 10 -a -z "$SYS_ROOT"; then \
 RUN sed -i /etc/bash.bashrc \
     -e 's/^PS1=.*/PS1="\\h:\\W\\$ "/' \
     -e '$a alias ls="ls -aFs"'
+    
