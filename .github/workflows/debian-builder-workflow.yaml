@@ -419,7 +419,19 @@ jobs:
       - name: Upload the container image to repository's Github Packages registry
         run: |
           printf "$GITHUB_TOKEN" | docker login docker.pkg.github.com -u ${GITHUB_OWNER} --password-stdin
-          docker push ${IMAGE_NAME_BASE}${TAG}:latest
+          ITERATOR=1
+          while [ $ITERATOR -le 10 ]
+          do
+            docker push ${IMAGE_NAME_BASE}${TAG}:latest
+            if [ $? -eq 0 ]; then
+              exit 0
+            fi
+            ITERATOR=$(( $ITERATOR + 1 ))
+            printf "Push to GitHub Packages Docker registry was not successful, retrying\n"
+            sleep 30
+          done
+          printf "Cloud not upload Docker image to GitHub Packages registry\n"
+          exit 1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_OWNER: ${{ github.actor }}
