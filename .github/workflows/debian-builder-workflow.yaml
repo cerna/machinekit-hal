@@ -295,7 +295,7 @@ jobs:
           gpg -K
           find /machinekit-hal -maxdepth 1 -name *.deb -print0 | xargs -0 -n1 -t -I '{}' dpkg-sig --sign builder '{}'
           " > doSignPackages.sh
-          docker run --rm -v $(pwd):/machinekit-hal -e SIGNING_KEY=${SIGNING_KEY} ${DOCKER_IMAGE} /bin/bash doSignPackages.sh
+          docker run --rm -v "$(pwd):/machinekit-hal" -e SIGNING_KEY=${SIGNING_KEY} ${DOCKER_IMAGE} /bin/bash doSignPackages.sh
           rm doSignPackages.sh
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
