@@ -385,7 +385,7 @@ RUN if test $DISTRO_VER -eq 10 -a -z "$SYS_ROOT"; then \
         apt-get install -y libsystemd-dev \
         && apt-get clean; \
     fi
-
+ 
 ###########################################
 # Set up environment
 #

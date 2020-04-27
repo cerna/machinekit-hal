@@ -260,6 +260,15 @@ jobs:
           ref: '${{ github.event.ref }}'
           path: 'build/machinekit-hal'
 
+      - name: Patch Docker Daemon data-root
+        run: |
+          DOCKER_DATA_ROOT='/mnt/var/lib/docker'
+          DOCKER_DAEMON_JSON='/etc/docker/daemon.json'
+          sudo mkdir -p "${DOCKER_DATA_ROOT}"
+          jq --arg dataroot "${DOCKER_DATA_ROOT}" '. + {"data-root": $dataroot}' "${DOCKER_DAEMON_JSON}" > "/tmp/docker.json.tmp"
+          sudo mv "/tmp/docker.json.tmp" "${DOCKER_DAEMON_JSON}"
+          sudo systemctl restart docker
+
         # Docker image temp/temp is temporary until the build script is changed accordingly
       - name: Prepare the Docker image
         run: |
@@ -349,6 +358,15 @@ jobs:
           printf "This job is going to use $RENAMEARCH as an achitecture tag\n"
           echo "::set-output name=architecture::$RENAMEARCH"
 
+      - name: Patch Docker Daemon data-root
+        run: |
+          DOCKER_DATA_ROOT='/mnt/var/lib/docker'
+          DOCKER_DAEMON_JSON='/etc/docker/daemon.json'
+          sudo mkdir -p "${DOCKER_DATA_ROOT}"
+          jq --arg dataroot "${DOCKER_DATA_ROOT}" '. + {"data-root": $dataroot}' "${DOCKER_DAEMON_JSON}" > "/tmp/docker.json.tmp"
+          sudo mv "/tmp/docker.json.tmp" "${DOCKER_DAEMON_JSON}"
+          sudo systemctl restart docker
+
         # Docker image temp/temp is temporary until the build script is changed accordingly
       - name: Prepare the Docker image
         run: |
@@ -412,8 +430,8 @@ jobs:
           jq --arg dataroot "${DOCKER_DATA_ROOT}" '. + {"data-root": $dataroot}' "${DOCKER_DAEMON_JSON}" > "/tmp/docker.json.tmp"
           sudo mv "/tmp/docker.json.tmp" "${DOCKER_DAEMON_JSON}"
           sudo systemctl restart docker
-          # Docker image temp/temp is temporary until the build script is changed accordingly
-
+          
+        # Docker image temp/temp is temporary until the build script is changed accordingly
       - name: Build the docker image for Debian ${{ matrix.osVersionCodename}}, ${{ matrix.architecture }} Builder
         run: |
           scripts/build_debian_docker_image -r temp -i temp -t ${TAG}
