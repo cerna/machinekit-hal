@@ -406,6 +406,9 @@ RUN if test $DISTRO_VER -eq 10 -a -z "$SYS_ROOT"; then \
 
 # Set up user ID inside container to match your ID
 
+ENV SHELL=/bin/bash
+ENV PATH=/usr/lib/ccache:/opt/gcc-linaro-hf/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
 # Customize the run environment to your taste
 # - bash prompt
 # - 'ls' alias
