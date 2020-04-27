@@ -290,9 +290,17 @@ jobs:
       - name: Sign the package with Machinekit Builder Signer Key
         if: github.event_name == 'push'
         run: |
-          echo "
+          echo "#!/bin/bash -e
           echo "$SIGNING_KEY" | gpg --import
-          find /machinekit-hal -name *.deb -print0 | xargs "
+          gpg -K
+          find /machinekit-hal -maxdepth 1 -name *.deb -print0 | xargs -0 -n1 -t -I '{}' dpkg-sig --sign builder '{}'
+          " > doSignPackages.sh
+          docker run --rm -v $(pwd):/machinekit-hal -e SIGNING_KEY=${SIGNING_KEY} ${DOCKER_IMAGE} /bin/bash doSignPackages.sh
+          rm doSignPackages.sh
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          DOCKER_IMAGE: 'docker.pkg.github.com/${{ github.repository }}/${{ env.ImageNameRoot }}${{ matrix.architecture }}_${{ matrix.osVersionNumber }}:latest'
+        working-directory: ./build
 
       - name: Prepare build artifact for upload
         run: |
