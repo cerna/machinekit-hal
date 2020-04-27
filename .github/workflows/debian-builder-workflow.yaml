@@ -293,10 +293,10 @@ jobs:
           mkdir ${ROOT_DIR}/secrets_mountpoint
           sudo mount -t tmpfs -o size=50m tmpfs ${ROOT_DIR}/secrets_mountpoint
           echo "$SIGNING_KEY" > ${ROOT_DIR}/secrets_mountpoint/key.gpg
-          echo "#!/bin/bash -e
-          GNUPGHOME='/secrets_mountpoint/.gnupg'
-          gpg -v --batch --import '/secrets_mountpoint/key.gpg'
-          find /machinekit-hal -maxdepth 1 -name *.deb -print0 | xargs -0 -n1 -t -I '{}' dpkg-sig --sign builder '{}'
+          echo "
+          #!/bin/bash -e
+          gpg --homedir /secrets_mountpoint/.gnupg -v --batch --import '/secrets_mountpoint/key.gpg'
+          find /machinekit-hal -maxdepth 1 -name *.deb -print0 | xargs -0 -n1 -t -I '{}' dpkg-sig --gpgoptions '--homedir /secrets_mountpoint/.gnupg' --sign builder '{}'
           " > ${ROOT_DIR}/secrets_mountpoint/doSignPackages.sh
           docker run --rm -v "${ROOT_DIR}/secrets_mountpoint:/secrets_mountpoint" -v "$(pwd):/machinekit-hal" ${DOCKER_IMAGE} /bin/bash /secrets_mountpoint/doSignPackages.sh
           sudo umount ${ROOT_DIR}/secrets_mountpoint
