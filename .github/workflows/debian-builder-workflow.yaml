@@ -297,7 +297,7 @@ jobs:
         working-directory: ./build/machinekit-hal  
 
       - name: Sign the package with Machinekit Builder Signer Key
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && needs.prepareState.outputs.HasSigningKey == 'true'
         run: |
           mkdir ${ROOT_DIR}/secrets_mountpoint
           sudo mount -t tmpfs -o size=50m tmpfs ${ROOT_DIR}/secrets_mountpoint
