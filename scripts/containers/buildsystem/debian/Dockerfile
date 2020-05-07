@@ -411,8 +411,6 @@ RUN addgroup --gid 1000 machinekit && \
         --home /home/machinekit --shell /bin/bash \
         --disabled-password --gecos "" machinekit
 
-USER machinekit
-
 RUN USER=machinekit && \
     GROUP=machinekit && \
     curl -SsL https://github.com/boxboat/fixuid/releases/download/v0.4.1/fixuid-0.4.1-linux-amd64.tar.gz | \
@@ -421,6 +419,8 @@ RUN USER=machinekit && \
     chmod 4755 /usr/local/bin/fixuid && \
     mkdir -p /etc/fixuid && \
     printf "user: $USER\ngroup: $GROUP\n" > /etc/fixuid/config.yml
+
+USER machinekit
 
 # Customize the following to match the user's environment
 
