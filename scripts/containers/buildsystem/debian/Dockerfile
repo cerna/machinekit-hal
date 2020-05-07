@@ -411,7 +411,7 @@ RUN addgroup --gid 1000 machinekit && \
         --home /home/machinekit --shell /bin/bash \
         --disabled-password --gecos "" machinekit
 
-RUN USER=machinekit && \
+RUN USER=machinekit && \ 
     GROUP=machinekit && \
     curl -SsL https://github.com/boxboat/fixuid/releases/download/v0.4.1/fixuid-0.4.1-linux-amd64.tar.gz | \
         tar -C /usr/local/bin -xzf - && \
