@@ -257,6 +257,11 @@ jobs:
       env:
         SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
 
+    # Because of error described in comment on Github issue tracker:
+    # https://github.com/machinekit/machinekit-hal/issues/268#issuecomment-625446050
+    # it's best not to store short strings in GitHub repository secrets vault,
+    # like logins which have tendency to be rather general - 'machinekit' and so
+    # As such
     - name: Check if specific Docker Registry data is present in GitHub secrets storage
       if: env.BuildDockerImage == 'true' && github.event_name == 'push'
       id: docker_registry_checker
@@ -271,10 +276,7 @@ jobs:
           echo "::set-output name=hasRegistry::false"
         fi
       env:
-        DOCKER_REGISTRY_NAME: ${{ secrets.DOCKER_REGISTRY_NAME }}
-        DOCKER_REGISTRY_USER: ${{ secrets.DOCKER_REGISTRY_USER }}
-        DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
-        DOCKER_REGISTRY_PREFIX: ${{ secrets.DOCKER_REGISTRY_PREFIX }}
+        DOCKER_REGISTRY_JSON: ${{ secrets.DOCKER_REGISTRY_JSON }}
 
     - name: Export timestamp of workflow run in seconds since epoch
       id: timestamp_exporter
