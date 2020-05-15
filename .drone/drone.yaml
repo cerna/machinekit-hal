@@ -72,8 +72,10 @@ steps:
   image: eryaf/mk-native_buster
   commands:
   - uname -a
+  - whoami
   - id -u
   - id -g
+  - curl -1sLf 'https://dl.cloudsmith.io/public/machinekit/machinekit/cfg/setup/bash.deb.sh' | bash
   - sudo apt-get update
   - sudo apt-get -y upgrade
   - cd ~
