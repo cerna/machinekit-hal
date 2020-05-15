@@ -35,6 +35,8 @@ steps:
   image: eryaf/mk-native_buster
   commands:
   - uname -a
+  - id -u
+  - id -g
   - sudo apt-get update
   - sudo apt-get -y upgrade
   - | 
@@ -51,7 +53,7 @@ steps:
     quilt \
     psmisc \
     pkg-config 
-  - debian/configure
+  - sudo debian/configure
   - mk-build-deps -ir -s sudo
   - cd src
   - ./autogen.sh
