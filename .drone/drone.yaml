@@ -14,7 +14,7 @@ steps:
   image: plugins/docker
   settings:
     repo: machinekit-registry/foo/bar
-    dockerfile: ../scripts/containers/buildsystem/debian/Dockerfile.native
+    dockerfile: scripts/containers/buildsystem/debian/Dockerfile.native
     registry: machinekit-registry
 
 - name: Print environ
