@@ -41,16 +41,16 @@ steps:
     sudo apt-get install -y \
     git \
     lsb-release \
-	  build-essential \
-	  devscripts \
-	  fakeroot \
-	  equivs \
-	  libtool \
-	  autoconf \
-	  automake \
-	  quilt \
-	  psmisc \
-	  pkg-config
+    build-essential \
+    devscripts \
+    fakeroot \
+    equivs \
+    libtool \
+    autoconf \
+    automake \
+    quilt \
+    psmisc \
+    pkg-config 
   - debian/configure
   - mk-build-deps -ir -s sudo
   - cd src
