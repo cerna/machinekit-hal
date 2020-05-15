@@ -13,7 +13,7 @@ steps:
 - name: Docker maybe
   image: plugins/docker
   settings:
-    repo: machinekit-registry/foo/bar
+    repo: machinekit-registry:5000/foo/bar
     dockerfile: scripts/containers/buildsystem/debian/Dockerfile.native
     registry: machinekit-registry:5000
 
@@ -24,12 +24,3 @@ steps:
   - printenv
   - uname -a
   - uname -r
-
-- name: test
-  image: redis
-  pull: if-not-exists
-  commands:
-  - sleep 5
-  - redis-cli -h redis ping
-  - redis-cli -h redis set FOO bar
-  - redis-cli -h redis get FOO
