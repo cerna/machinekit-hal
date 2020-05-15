@@ -5,7 +5,7 @@ platform:
   arch: amd64
 
 steps:
-- name: machinekit-registry.local
+- name: machinekit-registry
   image: registry:2
   detach: true
   pull: if-not-exists
@@ -13,9 +13,9 @@ steps:
 - name: Docker maybe
   image: plugins/docker
   settings:
-    repo: machinekit-registry.local/foo/bar
+    repo: machinekit-registry/foo/bar
     dockerfile: scripts/containers/buildsystem/debian/Dockerfile.native
-    registry: machinekit-registry.local
+    registry: machinekit-registry:5000
 
 - name: Print environ
   image: debian:buster
