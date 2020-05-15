@@ -22,11 +22,12 @@ steps:
   - cd src
   - ./autogen.sh
   - ./configure
-  - make
+  - make -j10
   - sudo make setuid
   - cd ..
   - . ./scripts/rip-environment
   - echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
+  - cat etc/machinekit/machinekit.ini
   - runtests tests
 ---
 kind: pipeline
@@ -53,11 +54,12 @@ steps:
   - cd src
   - ./autogen.sh
   - ./configure
-  - make
+  - make -j10
   - sudo make setuid
   - cd ..
   - . ./scripts/rip-environment
   - echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
+  - cat etc/machinekit/machinekit.ini
   - runtests tests
 
 ---
@@ -87,9 +89,10 @@ steps:
   - cd src
   - ./autogen.sh
   - ./configure
-  - make
+  - make -j10
   - sudo make setuid
   - cd ..
   - . ./scripts/rip-environment
   - echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
-  - runtests tests runtests tests
+  - cat etc/machinekit/machinekit.ini
+  - runtests tests
