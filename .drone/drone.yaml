@@ -53,7 +53,10 @@ steps:
     quilt \
     psmisc \
     pkg-config 
-  - sudo debian/configure
+  - cd ~
+  - git clone --depth 1 --branch drone-cloud-ci https://github.com/cerna/machinekit-hal mk
+  - cd mk
+  - debian/configure
   - mk-build-deps -ir -s sudo
   - cd src
   - ./autogen.sh
