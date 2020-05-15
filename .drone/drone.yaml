@@ -1,32 +1,76 @@
 kind: pipeline
-name: Build Debian Machinekit-HAL and test
+name: Build Debian BUSTER Machinekit-HAL and test AMD64
 
 platform:
   arch: amd64
 
 steps:
-- name: machinekit-registry
-  image: registry:2
-  detach: true
-  pull: if-not-exists
-
-- name: Docker maybe
-  image: plugins/docker
-  settings:
-    dockerfile: scripts/containers/buildsystem/debian/Dockerfile.native
-    insecure: true
-    registry: machinekit-registry:5000
-    repo: machinekit-registry:5000/test
-
-- name: Test image
-  image: machinekit-registry:5000/test
+- name: Build and run tests
+  image: eryaf/mk-native_buster
   commands:
   - uname -a
+  - sudo apt-get update
+  - sudo apt-get -y upgrade
+  - debian/configure
+  - mk-build-deps -ir -s sudo
+  - cd src
+  - ./autogen.sh
+  - ./configure
+  - make
+  - sudo make setuid
+  - cd ..
+  - . ./scripts/rip-environment
+  - echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
+  - runtests tests
 
-- name: Print environ
-  image: debian:buster
-  pull: if-not-exists
+---
+kind: pipeline
+name: Build Debian BUSTER Machinekit-HAL and test ARM64
+
+platform:
+  arch: arm64
+
+steps:
+- name: Build and run tests
+  image: eryaf/mk-native_buster
   commands:
-  - printenv
   - uname -a
-  - uname -r
+  - sudo apt-get update
+  - sudo apt-get -y upgrade
+  - debian/configure
+  - mk-build-deps -ir -s sudo
+  - cd src
+  - ./autogen.sh
+  - ./configure
+  - make
+  - sudo make setuid
+  - cd ..
+  - . ./scripts/rip-environment
+  - echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
+  - runtests tests
+
+---
+kind: pipeline
+name: Build Debian BUSTER Machinekit-HAL and test ARM
+
+platform:
+  arch: arm
+
+steps:
+- name: Build and run tests
+  image: eryaf/mk-native_buster
+  commands:
+  - uname -a
+  - sudo apt-get update
+  - sudo apt-get -y upgrade
+  - debian/configure
+  - mk-build-deps -ir -s sudo
+  - cd src
+  - ./autogen.sh
+  - ./configure
+  - make
+  - sudo make setuid
+  - cd ..
+  - . ./scripts/rip-environment
+  - echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
+  - runtests tests
