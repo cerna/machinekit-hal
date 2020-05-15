@@ -37,6 +37,20 @@ steps:
   - uname -a
   - sudo apt-get update
   - sudo apt-get -y upgrade
+  - | 
+    sudo apt-get install -y \
+    git \
+    lsb-release \
+	  build-essential \
+	  devscripts \
+	  fakeroot \
+	  equivs \
+	  libtool \
+	  autoconf \
+	  automake \
+	  quilt \
+	  psmisc \
+	  pkg-config
   - debian/configure
   - mk-build-deps -ir -s sudo
   - cd src
