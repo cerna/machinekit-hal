@@ -13,9 +13,13 @@ steps:
 - name: Docker maybe
   image: plugins/docker
   settings:
-    repo: machinekit-registry:5000/foo/bar
+    repo: machinekit-bar
     dockerfile: scripts/containers/buildsystem/debian/Dockerfile.native
-    registry: machinekit-registry:5000
+
+- name: Test image
+  image: machinekit-bar
+  commands:
+  - uname -a
 
 - name: Print environ
   image: debian:buster
