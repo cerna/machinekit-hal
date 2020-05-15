@@ -13,7 +13,6 @@ steps:
 - name: Docker maybe
   image: plugins/docker
   settings:
-    repo: machinekit-bar
     dockerfile: scripts/containers/buildsystem/debian/Dockerfile.native
     insecure: true
     registry: machinekit-registry:5000
