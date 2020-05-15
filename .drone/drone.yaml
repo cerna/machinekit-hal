@@ -1,28 +1,28 @@
-kind: pipeline
-name: Build Debian BUSTER Machinekit-HAL and test AMD64
-
-platform:
-  arch: amd64
-
-steps:
-- name: Build and run tests
-  image: eryaf/mk-native_buster
-  commands:
-  - uname -a
-  - sudo apt-get update
-  - sudo apt-get -y upgrade
-  - debian/configure
-  - mk-build-deps -ir -s sudo
-  - cd src
-  - ./autogen.sh
-  - ./configure
-  - make
-  - sudo make setuid
-  - cd ..
-  - . ./scripts/rip-environment
-  - echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
-  - runtests tests
-
+#kind: pipeline
+#name: Build Debian BUSTER Machinekit-HAL and test AMD64
+#
+#platform:
+#  arch: amd64
+#
+#steps:
+#- name: Build and run tests
+#  image: eryaf/mk-native_buster
+#  commands:
+#  - uname -a
+#  - sudo apt-get update
+#  - sudo apt-get -y upgrade
+#  - debian/configure
+#  - mk-build-deps -ir -s sudo
+#  - cd src
+#  - ./autogen.sh
+#  - ./configure
+#  - make
+#  - sudo make setuid
+#  - cd ..
+#  - . ./scripts/rip-environment
+#  - echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
+#  - runtests tests
+#
 ---
 kind: pipeline
 name: Build Debian BUSTER Machinekit-HAL and test ARM64
@@ -49,28 +49,29 @@ steps:
   - echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
   - runtests tests
 
----
-kind: pipeline
-name: Build Debian BUSTER Machinekit-HAL and test ARM
-
-platform:
-  arch: arm
-
-steps:
-- name: Build and run tests
-  image: eryaf/mk-native_buster
-  commands:
-  - uname -a
-  - sudo apt-get update
-  - sudo apt-get -y upgrade
-  - debian/configure
-  - mk-build-deps -ir -s sudo
-  - cd src
-  - ./autogen.sh
-  - ./configure
-  - make
-  - sudo make setuid
-  - cd ..
-  - . ./scripts/rip-environment
-  - echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
-  - runtests tests
+#---
+#kind: pipeline
+#name: Build Debian BUSTER Machinekit-HAL and test ARM
+#
+#platform:
+#  arch: arm
+#
+#steps:
+#- name: Build and run tests
+#  image: eryaf/mk-native_buster
+#  commands:
+#  - uname -a
+#  - sudo apt-get update
+#  - sudo apt-get -y upgrade
+#  - debian/configure
+#  - mk-build-deps -ir -s sudo
+#  - cd src
+#  - ./autogen.sh
+#  - ./configure
+#  - make
+#  - sudo make setuid
+#  - cd ..
+#  - . ./scripts/rip-environment
+#  - echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
+#  - runtests tests
+#
