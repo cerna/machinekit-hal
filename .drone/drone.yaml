@@ -23,7 +23,7 @@
 #  - echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
 #  - runtests tests
 #
----
+#---
 kind: pipeline
 name: Build Debian BUSTER Machinekit-HAL and test ARM64
 
