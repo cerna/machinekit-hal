@@ -15,9 +15,12 @@ steps:
   settings:
     repo: machinekit-bar
     dockerfile: scripts/containers/buildsystem/debian/Dockerfile.native
+    insecure: true
+    registry: machinekit-registry:5000
+    repo: machinekit-registry:5000/test
 
 - name: Test image
-  image: machinekit-bar
+  image: machinekit-registry:5000/test
   commands:
   - uname -a
 
