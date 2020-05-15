@@ -18,7 +18,7 @@ steps:
   - cd mk
   - debian/configure
   - mk-build-deps -r
-  - sudo apt-get -y install ./machinekit-hal-build-deps.deb
+  - sudo apt-get -y install ./machinekit-hal-build-deps_1.0_all.deb
   - cd src
   - ./autogen.sh
   - ./configure
@@ -49,7 +49,7 @@ steps:
   - cd mk
   - debian/configure
   - mk-build-deps -r
-  - sudo apt-get -y install ./machinekit-hal-build-deps.deb
+  - sudo apt-get -y install ./machinekit-hal-build-deps_1.0_all.deb
   - cd src
   - ./autogen.sh
   - ./configure
@@ -81,7 +81,7 @@ steps:
   - cd mk
   - debian/configure
   - mk-build-deps -r
-  - sudo apt-get -y install ./machinekit-hal-build-deps.deb
+  - sudo apt-get -y install ./machinekit-hal-build-deps_1.0_all.deb
   - cd src
   - ./autogen.sh
   - ./configure
