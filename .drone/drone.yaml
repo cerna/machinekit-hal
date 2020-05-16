@@ -28,7 +28,10 @@ steps:
   - . ./scripts/rip-environment
   - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
   - cat etc/machinekit/machinekit.ini
+  - cat /var/log/hal.log
   - runtests tests
+  - cat /var/log/hal.log
+
 ---
 kind: pipeline
 name: Build Debian BUSTER Machinekit-HAL and test ARM64
@@ -60,7 +63,9 @@ steps:
   - . ./scripts/rip-environment
   - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
   - cat etc/machinekit/machinekit.ini
+  - cat /var/log/hal.log
   - runtests tests
+  - cat /var/log/hal.log
 
 ---
 kind: pipeline
@@ -95,4 +100,6 @@ steps:
   - . ./scripts/rip-environment
   - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
   - cat etc/machinekit/machinekit.ini
+  - cat /var/log/hal.log
   - runtests tests
+  - cat /var/log/hal.log
