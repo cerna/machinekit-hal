@@ -17,8 +17,7 @@ steps:
   - git clone --depth 1 --branch drone-cloud-ci https://github.com/cerna/machinekit-hal mk
   - cd mk
   - debian/configure
-  - mk-build-deps -r
-  - sudo apt-get -y install ./machinekit-hal-build-deps_1.0_all.deb
+  - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
   - cd src
   - ./autogen.sh
   - ./configure
@@ -51,8 +50,7 @@ steps:
   - git clone --depth 1 --branch drone-cloud-ci https://github.com/cerna/machinekit-hal mk
   - cd mk
   - debian/configure
-  - mk-build-deps -r
-  - sudo apt-get -y install ./machinekit-hal-build-deps_1.0_all.deb
+  - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
   - cd src
   - ./autogen.sh
   - ./configure
@@ -87,8 +85,7 @@ steps:
   - git clone --depth 1 --branch drone-cloud-ci https://github.com/cerna/machinekit-hal mk
   - cd mk
   - debian/configure
-  - mk-build-deps -r
-  - sudo apt-get -y install ./machinekit-hal-build-deps_1.0_all.deb
+  - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
   - cd src
   - ./autogen.sh
   - ./configure
