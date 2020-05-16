@@ -64,7 +64,7 @@ steps:
 
 ---
 kind: pipeline
-name: Build Debian BUSTER Machinekit-HAL and test ARM .
+name: Build Debian BUSTER Machinekit-HAL and test ARM
 
 platform:
   arch: arm

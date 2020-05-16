@@ -79,9 +79,17 @@ RUN apt-get -y install \
     dpkg-sig \
     && apt-get clean
 
-RUN curl -1sLf \
-  'https://dl.cloudsmith.io/public/machinekit/machinekit/cfg/setup/bash.deb.sh' \
-  | bash
+RUN apt-get install -y debian-keyring  \
+&& apt-get install -y debian-archive-keyring \
+&& apt-get install -y apt-transport-https
+RUN curl -1sLf --insecure 'https://dl.cloudsmith.io/public/machinekit/machinekit/cfg/gpg/gpg.A9B6D8B4BD8321F3.key' | apt-key add -
+RUN curl -1sLf --insecure 'https://dl.cloudsmith.io/public/machinekit/machinekit/cfg/setup/config.deb.txt?distro=debian&codename=buster' > /etc/apt/sources.list.d/machinekit-machinekit.list
+RUN apt-get update
+
+RUN apt-get update
+RUN apt-get install -y \
+    libck-dev \
+    && apt-get clean
 
 RUN echo "ALL ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
 
