@@ -499,9 +499,9 @@ int posix_task_start_hook(task_data *task, int task_id) {
 
     TRY_OR_ERR(pthread_attr_init(&attr), "pthread_attr_init");
 
-    TRY_OR_ERR(pthread_attr_setstack(
-                   &attr, extra_task_data[task_id].stackaddr, task->stacksize),
-               "pthread_attr_setstack");
+    TRY_OR_ERR(pthread_attr_setstacksize(
+                   &attr, task->stacksize),
+               "pthread_attr_setstacksize");
 
     rtapi_print_msg(RTAPI_MSG_DBG,
 		    "About to pthread_create task %d\n", task_id);
