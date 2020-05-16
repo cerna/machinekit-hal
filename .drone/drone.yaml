@@ -28,7 +28,7 @@ steps:
   - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
   - cat etc/machinekit/machinekit.ini
   - export DEBUG=5
-  - runtests -v tests
+  - runtests tests
 
 ---
 kind: pipeline
@@ -61,7 +61,7 @@ steps:
   - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
   - cat etc/machinekit/machinekit.ini
   - export DEBUG=5
-  - runtests -v tests
+  - runtests tests
 
 ---
 kind: pipeline
@@ -96,4 +96,4 @@ steps:
   - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
   - cat etc/machinekit/machinekit.ini
   - export DEBUG=5
-  - runtests -v tests
+  - runtests tests
