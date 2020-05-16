@@ -8,7 +8,6 @@ steps:
 - name: Build and run tests
   image: eryaf/mk-native_buster
   commands:
-  - export SYSLOG_TO_STDERR=true
   - uname -a
   - id -u
   - id -g
@@ -29,11 +28,8 @@ steps:
   - . ./scripts/rip-environment
   - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
   - cat etc/machinekit/machinekit.ini
-  - sudo touch /var/log/hal.log
-  - cat /var/log/hal.log
   - export DEBUG=5
   - runtests -v tests
-  - cat /var/log/hal.log
 
 ---
 kind: pipeline
@@ -46,7 +42,6 @@ steps:
 - name: Build and run tests
   image: eryaf/mk-native_buster
   commands:
-  - export SYSLOG_TO_STDERR=true
   - uname -a
   - id -u
   - id -g
@@ -67,11 +62,8 @@ steps:
   - . ./scripts/rip-environment
   - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
   - cat etc/machinekit/machinekit.ini
-  - sudo touch /var/log/hal.log
-  - cat /var/log/hal.log
   - export DEBUG=5
   - runtests -v tests
-  - cat /var/log/hal.log
 
 ---
 kind: pipeline
@@ -84,7 +76,6 @@ steps:
 - name: Build and run tests
   image: eryaf/mk-native_buster
   commands:
-  - export SYSLOG_TO_STDERR=true
   - uname -a
   - whoami
   - id -u
@@ -107,8 +98,5 @@ steps:
   - . ./scripts/rip-environment
   - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
   - cat etc/machinekit/machinekit.ini
-  - sudo touch /var/log/hal.log
-  - cat /var/log/hal.log
   - export DEBUG=5
   - runtests -v tests
-  - cat /var/log/hal.log
