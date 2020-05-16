@@ -31,7 +31,8 @@ steps:
   - cat etc/machinekit/machinekit.ini
   - sudo touch /var/log/hal.log
   - cat /var/log/hal.log
-  - runtests tests
+  - export DEBUG=5
+  - runtests -v tests
   - cat /var/log/hal.log
 
 ---
@@ -68,7 +69,8 @@ steps:
   - cat etc/machinekit/machinekit.ini
   - sudo touch /var/log/hal.log
   - cat /var/log/hal.log
-  - runtests tests
+  - export DEBUG=5
+  - runtests -v tests
   - cat /var/log/hal.log
 
 ---
@@ -107,5 +109,6 @@ steps:
   - cat etc/machinekit/machinekit.ini
   - sudo touch /var/log/hal.log
   - cat /var/log/hal.log
-  - runtests tests
+  - export DEBUG=5
+  - runtests -v tests
   - cat /var/log/hal.log
