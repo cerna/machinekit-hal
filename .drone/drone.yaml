@@ -8,6 +8,7 @@ steps:
 - name: Build and run tests
   image: eryaf/mk-native_buster
   commands:
+  - export SYSLOG_TO_STDERR=true
   - uname -a
   - id -u
   - id -g
@@ -44,6 +45,7 @@ steps:
 - name: Build and run tests
   image: eryaf/mk-native_buster
   commands:
+  - export SYSLOG_TO_STDERR=true
   - uname -a
   - id -u
   - id -g
@@ -80,6 +82,7 @@ steps:
 - name: Build and run tests
   image: eryaf/mk-native_buster
   commands:
+  - export SYSLOG_TO_STDERR=true
   - uname -a
   - whoami
   - id -u
