@@ -27,6 +27,7 @@ steps:
   - . ./scripts/rip-environment
   - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
   - cat etc/machinekit/machinekit.ini
+  - ls -aLR include
   - export DEBUG=5
   - runtests tests
 
@@ -60,6 +61,7 @@ steps:
   - . ./scripts/rip-environment
   - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
   - cat etc/machinekit/machinekit.ini
+  - ls -aLR include
   - export DEBUG=5
   - runtests tests
 
@@ -95,5 +97,6 @@ steps:
   - . ./scripts/rip-environment
   - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
   - cat etc/machinekit/machinekit.ini
+  - ls -aLR include
   - export DEBUG=5
   - runtests tests
