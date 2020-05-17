@@ -100,3 +100,108 @@ steps:
   - ls -aLR include
   - export DEBUG=5
   - runtests tests
+
+---
+kind: pipeline
+name: Build Debian STRETCH Machinekit-HAL and test AMD64
+
+platform:
+  arch: amd64
+
+steps:
+- name: Build and run tests
+  image: eryaf/mk-native_stretch
+  commands:
+  - uname -a
+  - id -u
+  - id -g
+  - sudo apt-get update
+  - sudo apt-get -y upgrade
+  - cd ~
+  - git clone --depth 1 --branch drone-cloud-ci https://github.com/cerna/machinekit-hal mk
+  - cd mk
+  - debian/configure
+  - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
+  - cd src
+  - ./autogen.sh
+  - ./configure
+  - make -j10
+  - sudo make setuid
+  - cd ..
+  - . ./scripts/rip-environment
+  - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
+  - cat etc/machinekit/machinekit.ini
+  - ls -aLR include
+  - export DEBUG=5
+  - runtests tests
+
+---
+kind: pipeline
+name: Build Debian STRETCH Machinekit-HAL and test ARM64
+
+platform:
+  arch: arm64
+
+steps:
+- name: Build and run tests
+  image: eryaf/mk-native_stretch
+  commands:
+  - uname -a
+  - id -u
+  - id -g
+  - sudo apt-get update
+  - sudo apt-get -y upgrade
+  - cd ~
+  - git clone --depth 1 --branch drone-cloud-ci https://github.com/cerna/machinekit-hal mk
+  - cd mk
+  - debian/configure
+  - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
+  - cd src
+  - ./autogen.sh
+  - ./configure
+  - make -j10
+  - sudo make setuid
+  - cd ..
+  - . ./scripts/rip-environment
+  - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
+  - cat etc/machinekit/machinekit.ini
+  - ls -aLR include
+  - export DEBUG=5
+  - runtests tests
+
+---
+kind: pipeline
+name: Build Debian STRETCH Machinekit-HAL and test ARM
+
+platform:
+  arch: arm
+
+steps:
+- name: Build and run tests
+  image: eryaf/mk-native_stretch
+  commands:
+  - uname -a
+  - whoami
+  - id -u
+  - id -g
+  - curl -1sLf 'https://dl.cloudsmith.io/public/machinekit/machinekit/cfg/setup/bash.deb.sh' | sudo -E bash
+  - sudo apt-get update
+  - sudo apt-get -y upgrade
+  - cd ~
+  - git clone --depth 1 --branch drone-cloud-ci https://github.com/cerna/machinekit-hal mk
+  - cd mk
+  - debian/configure
+  - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
+  - cd src
+  - ./autogen.sh
+  - ./configure
+  - make -j10
+  - sudo make setuid
+  - cd ..
+  - . ./scripts/rip-environment
+  - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
+  - cat etc/machinekit/machinekit.ini
+  - ls -aLR include
+  - export DEBUG=5
+  - runtests tests
+  
