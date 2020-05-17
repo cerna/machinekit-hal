@@ -29,7 +29,7 @@ steps:
   - cat etc/machinekit/machinekit.ini
   - ls -aLR include
   - export DEBUG=5
-  - runtests sanitytest
+  - runtests -v sanitytest
 
 ---
 kind: pipeline
@@ -99,4 +99,4 @@ steps:
   - cat etc/machinekit/machinekit.ini
   - ls -aLR include
   - export DEBUG=5
-  - runtests sanitytest
+  - runtests -v sanitytest
