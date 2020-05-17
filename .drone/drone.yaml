@@ -63,7 +63,7 @@ steps:
   - cat etc/machinekit/machinekit.ini
   - ls -aLR include
   - export DEBUG=5
-  - runtests tests
+  - runtests -v tests
 
 ---
 kind: pipeline
