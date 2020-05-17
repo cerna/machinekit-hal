@@ -13,7 +13,7 @@ do
     */*.pb.h) continue ;;
     */container.h) continue ;;
     esac
-    if [ "${HEADER:$length:2}" == ".h" ]
+    if [ "${HEADER: -2}" == ".h" ]
     then
         gcc -DULAPI -I${HEADERS_DIRECTORY} -E -x c ${HEADER} > /dev/null
     fi
