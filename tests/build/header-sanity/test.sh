@@ -1,21 +1,21 @@
 #!/bin/sh
 set -xe 
-HEADERS=$(readlink -f ../../../include)
-for i in $HEADERS/*.h; do
-    case $i in
+HEADERS_DIRECTORY=$(readlink -f ../../include)
+mapfile -t -d '' ARRAY_H_HH < <(find ${HEADERS_DIRECTORY} -type f \
+    \( -iname \*.h -o -iname \*.hh \) -print0 | \
+    xargs -0 -n1 -I '{}' realpath -e -z '{}')
+
+for HEADER in "${ARRAY_H_HH[@]}"
+do
+    case ${HEADER} in
     */rtapi_app.h) continue ;;
     */rtapi_common.h) continue ;;
     */*.pb.h) continue ;;
     */container.h) continue ;;
     esac
-    gcc -DULAPI -I$HEADERS -E -x c $i > /dev/null
-done
-for i in $HEADERS/*.h $HEADERS/*.hh; do
-    case $i in
-    */rtapi_app.h) continue ;;
-    */rtapi_common.h) continue ;;
-    */*.pb.h) continue ;;
-    */container.h) continue ;;
-    esac
-    g++ -DULAPI -I$HEADERS -E -x c++ $i > /dev/null
+    if [ "${HEADER: -2}" == ".h" ]
+    then
+        gcc -DULAPI -I${HEADERS_DIRECTORY} -E -x c ${HEADER} > /dev/null
+    fi
+    g++ -DULAPI -I${HEADERS_DIRECTORY} -E -x c++ ${HEADER} > /dev/null
 done
