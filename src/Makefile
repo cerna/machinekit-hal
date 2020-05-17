@@ -533,7 +533,9 @@ HEADERS := \
     rtapi/flavor/ulapi.h
 
 ifeq ($(HAS_SYS_IO),yes)
-    HEADERS += hal/lib/hal_parport.h 
+    HEADERS += \
+		hal/lib/hal_parport.h \
+		rtapi/rtapi_io.h
 endif
 
 ## the "headers" target installs all the header files in ../include
