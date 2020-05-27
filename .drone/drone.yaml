@@ -9,8 +9,6 @@ steps:
   image: eryaf/mk-native_buster
   commands:
   - uname -a
-  - id -u
-  - id -g
   - sudo apt-get update
   - sudo apt-get -y upgrade
   - cd ~
@@ -18,19 +16,25 @@ steps:
   - cd mk
   - debian/configure
   - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
-  - cd src
-  - ./autogen.sh
-  - ./configure
-  - make -j10
-  - sudo make setuid
-  - cd ..
-  - . ./scripts/rip-environment
-  - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
-  - cat etc/machinekit/machinekit.ini
-  - ls -aLR include
-  - export DEBUG=5
-  - runtests tests
-
+  - |
+      bash -xec "
+      # Set up build:  \`autoconf\` and \`make\`
+      (
+      cd src;
+      ./autogen.sh;
+      ./configure
+      )
+      # Build
+      make -C src -j${JOBS};
+      # Set up runtime:  setuid, environment, ini
+      sudo make -C src setuid || true;  # Don't exit if this fails
+      . scripts/rip-environment;
+      echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> \
+      etc/machinekit/machinekit.ini;
+      tail -2 etc/machinekit/machinekit.ini;
+            # Run regression tests
+      runtests tests"
+      
 ---
 kind: pipeline
 name: Build Debian BUSTER Machinekit-HAL and test ARM64
@@ -43,8 +47,6 @@ steps:
   image: eryaf/mk-native_buster
   commands:
   - uname -a
-  - id -u
-  - id -g
   - sudo apt-get update
   - sudo apt-get -y upgrade
   - cd ~
@@ -52,18 +54,24 @@ steps:
   - cd mk
   - debian/configure
   - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
-  - cd src
-  - ./autogen.sh
-  - ./configure
-  - make -j10
-  - sudo make setuid
-  - cd ..
-  - . ./scripts/rip-environment
-  - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
-  - cat etc/machinekit/machinekit.ini
-  - ls -aLR include
-  - export DEBUG=5
-  - runtests tests
+  - |
+      bash -xec "
+      # Set up build:  \`autoconf\` and \`make\`
+      (
+      cd src;
+      ./autogen.sh;
+      ./configure
+      )
+      # Build
+      make -C src -j${JOBS};
+      # Set up runtime:  setuid, environment, ini
+      sudo make -C src setuid || true;  # Don't exit if this fails
+      . scripts/rip-environment;
+      echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> \
+      etc/machinekit/machinekit.ini;
+      tail -2 etc/machinekit/machinekit.ini;
+            # Run regression tests
+      runtests tests"
 
 ---
 kind: pipeline
@@ -77,10 +85,6 @@ steps:
   image: eryaf/mk-native_buster
   commands:
   - uname -a
-  - whoami
-  - id -u
-  - id -g
-  - curl -1sLf 'https://dl.cloudsmith.io/public/machinekit/machinekit/cfg/setup/bash.deb.sh' | sudo -E bash
   - sudo apt-get update
   - sudo apt-get -y upgrade
   - cd ~
@@ -88,18 +92,24 @@ steps:
   - cd mk
   - debian/configure
   - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
-  - cd src
-  - ./autogen.sh
-  - ./configure
-  - make -j10
-  - sudo make setuid
-  - cd ..
-  - . ./scripts/rip-environment
-  - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
-  - cat etc/machinekit/machinekit.ini
-  - ls -aLR include
-  - export DEBUG=5
-  - runtests tests
+  - |
+      bash -xec "
+      # Set up build:  \`autoconf\` and \`make\`
+      (
+      cd src;
+      ./autogen.sh;
+      ./configure
+      )
+      # Build
+      make -C src -j${JOBS};
+      # Set up runtime:  setuid, environment, ini
+      sudo make -C src setuid || true;  # Don't exit if this fails
+      . scripts/rip-environment;
+      echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> \
+      etc/machinekit/machinekit.ini;
+      tail -2 etc/machinekit/machinekit.ini;
+            # Run regression tests
+      runtests tests"
 
 ---
 kind: pipeline
@@ -113,8 +123,6 @@ steps:
   image: eryaf/mk-native_stretch
   commands:
   - uname -a
-  - id -u
-  - id -g
   - sudo apt-get update
   - sudo apt-get -y upgrade
   - cd ~
@@ -122,18 +130,24 @@ steps:
   - cd mk
   - debian/configure
   - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
-  - cd src
-  - ./autogen.sh
-  - ./configure
-  - make -j10
-  - sudo make setuid
-  - cd ..
-  - . ./scripts/rip-environment
-  - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
-  - cat etc/machinekit/machinekit.ini
-  - ls -aLR include
-  - export DEBUG=5
-  - runtests tests
+  - |
+      bash -xec "
+      # Set up build:  \`autoconf\` and \`make\`
+      (
+      cd src;
+      ./autogen.sh;
+      ./configure
+      )
+      # Build
+      make -C src -j${JOBS};
+      # Set up runtime:  setuid, environment, ini
+      sudo make -C src setuid || true;  # Don't exit if this fails
+      . scripts/rip-environment;
+      echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> \
+      etc/machinekit/machinekit.ini;
+      tail -2 etc/machinekit/machinekit.ini;
+            # Run regression tests
+      runtests tests"
 
 ---
 kind: pipeline
@@ -147,8 +161,6 @@ steps:
   image: eryaf/mk-native_stretch
   commands:
   - uname -a
-  - id -u
-  - id -g
   - sudo apt-get update
   - sudo apt-get -y upgrade
   - cd ~
@@ -156,18 +168,24 @@ steps:
   - cd mk
   - debian/configure
   - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
-  - cd src
-  - ./autogen.sh
-  - ./configure
-  - make -j10
-  - sudo make setuid
-  - cd ..
-  - . ./scripts/rip-environment
-  - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
-  - cat etc/machinekit/machinekit.ini
-  - ls -aLR include
-  - export DEBUG=5
-  - runtests tests
+  - |
+      bash -xec "
+      # Set up build:  \`autoconf\` and \`make\`
+      (
+      cd src;
+      ./autogen.sh;
+      ./configure
+      )
+      # Build
+      make -C src -j${JOBS};
+      # Set up runtime:  setuid, environment, ini
+      sudo make -C src setuid || true;  # Don't exit if this fails
+      . scripts/rip-environment;
+      echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> \
+      etc/machinekit/machinekit.ini;
+      tail -2 etc/machinekit/machinekit.ini;
+            # Run regression tests
+      runtests tests"
 
 ---
 kind: pipeline
@@ -181,10 +199,6 @@ steps:
   image: eryaf/mk-native_stretch
   commands:
   - uname -a
-  - whoami
-  - id -u
-  - id -g
-  - curl -1sLf 'https://dl.cloudsmith.io/public/machinekit/machinekit/cfg/setup/bash.deb.sh' | sudo -E bash
   - sudo apt-get update
   - sudo apt-get -y upgrade
   - cd ~
@@ -192,18 +206,24 @@ steps:
   - cd mk
   - debian/configure
   - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
-  - cd src
-  - ./autogen.sh
-  - ./configure
-  - make -j10
-  - sudo make setuid
-  - cd ..
-  - . ./scripts/rip-environment
-  - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
-  - cat etc/machinekit/machinekit.ini
-  - ls -aLR include
-  - export DEBUG=5
-  - runtests tests
+  - |
+      bash -xec "
+      # Set up build:  \`autoconf\` and \`make\`
+      (
+      cd src;
+      ./autogen.sh;
+      ./configure
+      )
+      # Build
+      make -C src -j${JOBS};
+      # Set up runtime:  setuid, environment, ini
+      sudo make -C src setuid || true;  # Don't exit if this fails
+      . scripts/rip-environment;
+      echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> \
+      etc/machinekit/machinekit.ini;
+      tail -2 etc/machinekit/machinekit.ini;
+            # Run regression tests
+      runtests tests"
 
 ---
 kind: pipeline
@@ -217,8 +237,6 @@ steps:
   image: eryaf/mk-native_jessie
   commands:
   - uname -a
-  - id -u
-  - id -g
   - sudo apt-get update
   - sudo apt-get -y upgrade
   - cd ~
@@ -226,18 +244,24 @@ steps:
   - cd mk
   - debian/configure
   - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
-  - cd src
-  - ./autogen.sh
-  - ./configure
-  - make -j10
-  - sudo make setuid
-  - cd ..
-  - . ./scripts/rip-environment
-  - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
-  - cat etc/machinekit/machinekit.ini
-  - ls -aLR include
-  - export DEBUG=5
-  - runtests tests
+  - |
+      bash -xec "
+      # Set up build:  \`autoconf\` and \`make\`
+      (
+      cd src;
+      ./autogen.sh;
+      ./configure
+      )
+      # Build
+      make -C src -j${JOBS};
+      # Set up runtime:  setuid, environment, ini
+      sudo make -C src setuid || true;  # Don't exit if this fails
+      . scripts/rip-environment;
+      echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> \
+      etc/machinekit/machinekit.ini;
+      tail -2 etc/machinekit/machinekit.ini;
+            # Run regression tests
+      runtests tests"
 
 ---
 kind: pipeline
@@ -251,10 +275,6 @@ steps:
   image: eryaf/mk-native_jessie
   commands:
   - uname -a
-  - whoami
-  - id -u
-  - id -g
-  - curl -1sLf 'https://dl.cloudsmith.io/public/machinekit/machinekit/cfg/setup/bash.deb.sh' | sudo -E bash
   - sudo apt-get update
   - sudo apt-get -y upgrade
   - cd ~
@@ -262,15 +282,21 @@ steps:
   - cd mk
   - debian/configure
   - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
-  - cd src
-  - ./autogen.sh
-  - ./configure
-  - make -j10
-  - sudo make setuid
-  - cd ..
-  - . ./scripts/rip-environment
-  - echo 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> etc/machinekit/machinekit.ini
-  - cat etc/machinekit/machinekit.ini
-  - ls -aLR include
-  - export DEBUG=5
-  - runtests tests
+  - |
+      bash -xec "
+      # Set up build:  \`autoconf\` and \`make\`
+      (
+      cd src;
+      ./autogen.sh;
+      ./configure
+      )
+      # Build
+      make -C src -j${JOBS};
+      # Set up runtime:  setuid, environment, ini
+      sudo make -C src setuid || true;  # Don't exit if this fails
+      . scripts/rip-environment;
+      echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> \
+      etc/machinekit/machinekit.ini;
+      tail -2 etc/machinekit/machinekit.ini;
+            # Run regression tests
+      runtests tests"
