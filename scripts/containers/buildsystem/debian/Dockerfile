@@ -129,12 +129,7 @@ RUN apt-get install -y \
     && apt-get clean
 
 # - amd64 -> i386 multiarch/multilib compiles
-RUN if test $DISTRO_VER -eq 8; then \
-        apt-get install -y \
-	    binutils-i586-linux-gnu \
-	    gcc-4.9-multilib \
-	    g++-4.9-multilib; \
-    elif test $DISTRO_VER -eq 9; then \
+RUN if test $DISTRO_VER -eq 9; then \
         apt-get install -y \
 	    binutils-multiarch \
 	    gcc-6-multilib \
@@ -146,28 +141,6 @@ RUN if test $DISTRO_VER -eq 8; then \
 	    gcc-8-multilib \
 	    g++-8-multilib \
 	    libgcc-8-dev:$DEBIAN_ARCH; \
-    fi
-
-# - Linaro gcc cross compiler for armhf, Jessie only
-RUN if test $DISTRO_VER -eq 8; then \
-        VER=4.9.4-2017.01 && \
-        ARCH=arm-linux-gnueabihf && \
-        DIR=gcc-linaro-${VER}-x86_64_${ARCH} && \
-        TXZ=${DIR}.tar.xz && \
-        URI=http://releases.linaro.org/components/toolchain/binaries/latest-4/${ARCH} && \
-        WORKD=/tmp/linaro && \
-        mkdir -p ${WORKD} && cd ${WORKD} && \
-        echo "Downloading gcc-linaro-${VER}" && \
-        wget --progress=dot:mega ${URI}/${TXZ} && \
-        wget -q ${URI}/${TXZ}.asc && \
-        echo "Validating checksum of compiler download" && \
-        md5sum -c ${TXZ}.asc && \
-        echo "Extracting compiler to /opt/" && \
-        tar xCf /opt ${WORKD}/${TXZ} && \
-        ln -snf ${DIR} /opt/gcc-linaro-hf && \
-        rm -rf ${WORKD} && \
-        ln -s ../../bin/ccache /usr/lib/ccache/arm-linux-gnueabihf-gcc && \
-        ln -s ../../bin/ccache /usr/lib/ccache/arm-linux-gnueabihf-g++ ; \
     fi
 
 # - Qemu for emulating ARM on amd64
@@ -228,11 +201,6 @@ RUN test $DISTRO_VER -eq 8 || { \
         ln -s x86_64-linux-gnu-strip /usr/bin/i686-linux-gnu-strip; \
     }
 
-# Symlink armhf-arch pkg-config, Jessie only
-RUN if test $DISTRO_VER -eq 8; then \
-        ln -s pkg-config /usr/bin/${ARM_HOST_MULTIARCH}-pkg-config; \
-    fi
-
 ###################################################################
 # Machinekit:  Configure apt
 
@@ -244,12 +212,6 @@ RUN curl -1sLf \
 
 ###################################################################
 # Machinekit:  Install dependency packages
-
-# Xenomai threads still supported on Jessie
-RUN if test $DISTRO_CODENAME = jessie -a -z "$SYS_ROOT"; then \
-        apt-get install -y libxenomai-dev \
-        && apt-get clean; \
-    fi
 
 ##############################
 # Machinekit:  Configure multistrap
@@ -263,12 +225,8 @@ RUN mkdir /tmp/debs && \
     touch /tmp/debs/Sources
 
 # Create deps package and local package repo
-RUN if test $DISTRO_VER -eq 8; then \
-        mk-build-deps --arch $DEBIAN_ARCH /tmp/debian/control; \
-    else \
-        mk-build-deps --build-arch $DEBIAN_ARCH --host-arch $DEBIAN_ARCH \
-	    /tmp/debian/control; \
-    fi \
+RUN mk-build-deps --build-arch $DEBIAN_ARCH --host-arch $DEBIAN_ARCH \
+	/tmp/debian/control \
     && mv *.deb /tmp/debs \
     && ( cd /tmp/debs && dpkg-scanpackages -m . > /tmp/debs/Packages )
 
@@ -296,7 +254,7 @@ RUN if test -z "$SYS_ROOT"; then \
 	&& apt-get clean; \
     fi
 
-# Patch multistrap on Buster
+# Patch multistrap on Buster and Stretch
 # https://github.com/volumio/Build/issues/348#issuecomment-462271607
 RUN if test $DISTRO_VER -ge 9; then \
         sed -i /usr/sbin/multistrap \
@@ -318,21 +276,6 @@ RUN test -z "$SYS_ROOT" \
             fi; \
         done; \
     }
-
-# - Link directories with glib/gtk includes in the wrong place
-#   Only needed on Jessie?
-RUN test -z "$SYS_ROOT" \
-    || { \
-        mkdir -p /usr/lib/${HOST_MULTIARCH} && \
-        ln -s $SYS_ROOT/usr/lib/${HOST_MULTIARCH}/glib-2.0 \
-	    /usr/lib/${HOST_MULTIARCH} && \
-	ln -s $SYS_ROOT/usr/lib/${HOST_MULTIARCH}/gtk-2.0 \
-	    /usr/lib/${HOST_MULTIARCH}; \
-    }
-
-# - Link `xeno-config` to where autoconf can find it
-RUN test -z "$SYS_ROOT" -o $DISTRO_VER -gt 8 || \
-    ln -s /sysroot/usr/bin/xeno-config /usr/bin/
 
 ##############################
 # Machinekit:  Build arch build environment
@@ -403,7 +346,7 @@ RUN USER=machinekit && \
 
 # Customize the following to match the user's environment
 
-ENV PATH=/usr/lib/ccache:/opt/gcc-linaro-hf/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}
+ENV PATH=/usr/lib/ccache:/usr/bin:/sbin:/bin:${PATH}
 
 # Customize the run environment to your taste
 # - bash prompt
