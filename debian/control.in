@@ -8,6 +8,7 @@ Maintainer: MachinekitBot <machinekitATeryafDOTcom>
 # as invalid, ergo autoconf:native (not) vs python:native
 Build-Depends: 
     debhelper (>= 10),
+    debhelper-compat (= 10),
     autoconf (>= 2.63),
     automake,
     libgl1-mesa-dev,
