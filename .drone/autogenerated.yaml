@@ -1,0 +1,74 @@
+# This is initial version of the Drone Cloud CI workflow and its main purpose
+# is to test (pun intended) how well the Drone Cloud functions in real-life
+# Machinekit-HAL situation (in contrast to free-thinking theorization on how
+# the Drone pipelines should be implemented, which usually doesn't survive
+# contact with reality, lesson learned)
+
+# All of this will be rewritten once enough real-life testing is done 
+
+# Keep pipeline name to 50 characters
+kind: pipeline
+name: DEBIAN Buster amd64
+
+platform:
+  arch: amd64
+
+clone:
+  disable: true
+
+steps:
+- name: Play around Drone
+  image: alpine
+  volumes:
+  - name: repository
+    path: /build
+  commands:
+  - chown 1000:1000 /build
+
+- name: Clone Machinekit-HAL repository
+  image: alpine/git
+  user: 1000
+  group: 1000
+  volumes:
+  - name: repository
+    path: /build/machinekit-hal
+  commands:
+  - git clone ${DRONE_GIT_HTTP_URL} /build/machinekit-hal
+  - git -C /build/machinekit-hal checkout ${DRONE_COMMIT}
+
+- name: Build and run tests
+  image: eryaf/mk-native_buster
+  commands:
+  - uname -a
+  - sudo apt-get update
+  - sudo apt-get -y upgrade
+  - cd ~
+  - git clone --depth 1 --branch drone-cloud-ci https://github.com/cerna/machinekit-hal mk
+  - cd mk
+  - debian/configure
+  - mk-build-deps -ir -s sudo -t "apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y"
+  - |
+      bash -xec "
+      # Set up build:  \`autoconf\` and \`make\`
+      (
+      cd src;
+      ./autogen.sh;
+      ./configure
+      )
+      # Build
+      make -C src -j${JOBS};
+      # Set up runtime:  setuid, environment, ini
+      sudo make -C src setuid || true;  # Don't exit if this fails
+      . scripts/rip-environment;
+      echo -e 'ANNOUNCE_IPV4=0\nANNOUNCE_IPV6=0' >> \
+      etc/machinekit/machinekit.ini;
+      tail -2 etc/machinekit/machinekit.ini;
+            # Run regression tests
+      runtests tests"
+
+volumes:
+- name: repository
+  user: 1000
+  group: 1000
+  temp: {}      
+
