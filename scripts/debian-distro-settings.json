@@ -57,6 +57,18 @@
     {
       "osVersionNumber": 10,
       "architecture": "arm64"
+    },
+    {
+      "osVersionNumber": 18.04,
+      "architecture": "armhf"
+    },
+    {
+      "osVersionNumber": 18.04,
+      "architecture": "amd64"
+    },
+    {
+      "osVersionNumber": 18.04,
+      "architecture": "i386"
     }
   ],
   "imageNameRoot": "machinekit-hal-@DISTRIBUTION@-builder-v.@TAG@"
