@@ -7,7 +7,7 @@
 <p align="center">
 <a href="https://github.com/machinekit/machinekit-hal/actions" target="_blank">
 <img alt="Github Actions build status" src="https://img.shields.io/github/workflow/status/machinekit/machinekit-hal/Test application and publish packages (Debian linux)/master?style=for-the-badge&logo=github" />
-</a>
+</a> 
 
 <a href="https://travis-ci.com/github/machinekit/machinekit-hal/builds" target="_blank">
 <img alt="Travis-CI build status" src="https://img.shields.io/travis/com/machinekit/machinekit-hal?style=for-the-badge&logo=travis" />
