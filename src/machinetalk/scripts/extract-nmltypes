@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # extract fragment of proto defs for EMC message types
 # this fragment should be included in protobuf/proto/types.proto

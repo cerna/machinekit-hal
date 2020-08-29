@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # check-system-configuration.sh: see if config and log files exist and
 # log entries actually appear

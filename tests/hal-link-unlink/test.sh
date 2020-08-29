@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 realtime start
 python hallink.py

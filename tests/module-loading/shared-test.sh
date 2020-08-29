@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 outpipe=pipe-stdout
 trap "rm -f $outpipe" 0 1 2 3 9 15 EXIT

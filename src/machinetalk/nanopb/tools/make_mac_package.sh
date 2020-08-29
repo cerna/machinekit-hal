@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Run this script in the top nanopb directory to create a binary package
 # for Mac OS X users.
@@ -36,7 +36,7 @@ LIBPROTOC=$(otool -L `which protoc` | grep -o '/.*libprotoc[^ ]*')
 LIBPROTOBUF=$(otool -L `which protoc` | grep -o '/.*libprotobuf[^ ]*')
 cp $LIBPROTOC $LIBPROTOBUF $DEST/generator-bin/
 cat > $DEST/generator-bin/protoc << EOF
-#!/bin/bash
+#!/usr/bin/env bash
 SCRIPTDIR=\$(dirname "\$0")
 export DYLD_LIBRARY_PATH=\$SCRIPTDIR
 export PATH=\$SCRIPTDIR:\$PATH

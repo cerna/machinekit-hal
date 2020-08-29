@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Run this script in the top nanopb directory to create a binary package
 # for Windows users. This script is designed to run under MingW/MSYS bash

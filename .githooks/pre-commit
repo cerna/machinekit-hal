@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Pre-commit hook to apply clang-format to modified C/C++ source files.
 # Outputs a temporary file (/.clang-format-list) for use by a `prepare-commit-msg`

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Run this script in the top nanopb directory to create a binary package
 # for Linux users.
@@ -34,7 +34,7 @@ LIBPROTOC=$(ldd `which protoc` | grep -o '/.*libprotoc[^ ]*')
 LIBPROTOBUF=$(ldd `which protoc` | grep -o '/.*libprotobuf[^ ]*')
 cp $LIBPROTOC $LIBPROTOBUF $DEST/generator-bin/
 cat > $DEST/generator-bin/protoc << EOF
-#!/bin/bash
+#!/usr/bin/env bash
 SCRIPTDIR=\$(dirname "\$0")
 export LD_LIBRARY_PATH=\$SCRIPTDIR
 export PATH=\$SCRIPTDIR:\$PATH

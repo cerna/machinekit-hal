@@ -167,14 +167,14 @@ RUN if [[ "$(dpkg --print-architecture)" == "amd64" && \
           "$(lsb_release -cs)" == "stretch" ]];        \
     then                                               \
         printf "%b"                                    \
-               "#!/bin/bash\n"                         \
+               "#!/usr/bin/env bash\n"                 \
                "export CC=\"gcc -m32\"\n"              \
                "export CXX=\"g++ -m32\"\n"             \
                "export LDEMULATION=\"elf_i386\"\n"     \
                > /opt/environment/compiler.sh;                        \
     else                                                              \
         printf "%b"                                                   \
-               "#!/bin/bash\n"                                        \
+               "#!/usr/bin/env bash\n"                                \
                "export CC=$(dpkg-architecture -a${HOST_ARCHITECTURE}  \
                             -qDEB_HOST_GNU_TYPE)-gcc\n"               \
                "export CXX=$(dpkg-architecture -a${HOST_ARCHITECTURE} \
@@ -183,7 +183,7 @@ RUN if [[ "$(dpkg --print-architecture)" == "amd64" && \
     fi
 
 RUN printf "%b"                                               \
-           "#!/bin/bash\n"                                    \
+           "#!/usr/bin/env bash\n"                            \
            "set -a\n"                                         \
            "$(dpkg-architecture -a${HOST_ARCHITECTURE} -s)\n" \
            "set +a\n"                                         \
@@ -208,7 +208,7 @@ RUN if ! [[ $(echo -e "$($(dpkg-architecture -a${HOST_ARCHITECTURE}     \
             sort -V | head -n1) == "8" ]];                              \
     then                                                                \
         printf "%b"                                                     \
-               "#!/bin/bash\n"                                          \
+               "#!/usr/bin/env bash\n"                                  \
                "export DPKG_CFLAGS=\"${DPKG_CFLAGS} -Werror\"\n"        \
                > /opt/environment/dpkg_flags.sh;                        \
     fi

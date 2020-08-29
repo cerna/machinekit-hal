@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [ ! -z "$HAL_HOME" ]; then
     source $HAL_HOME/scripts/githelper.sh

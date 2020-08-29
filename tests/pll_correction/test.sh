@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
+
+set -e
 
 COMP="$(which halcompile || which comp)"
 $COMP --install pll_correction.comp 1>&2

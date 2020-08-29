@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 Error[0]="hm2/hm2_test.0: invalid cookie"

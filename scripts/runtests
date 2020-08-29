@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
+
+set -e
 
 # Give LCNC tests a pointer to pkg-config
 export HAL_PKG=machinekit-hal

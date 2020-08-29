@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
 #
 # Upload packages to packagecloud.io
 #
@@ -18,6 +18,8 @@
 # - TRAVIS_BRANCH:  Exit unless matches DEPLOY_BRANCH
 #
 # The `package_cloud` ruby gem should be installed
+
+set -e
 
 TAG=${1:-$TAG}
 

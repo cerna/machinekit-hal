@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 if ! type -path swish-e > /dev/null 2>&1; then
 	cat<<EOF
 This program requires that the 'swish-e' full-text indexer be installed.

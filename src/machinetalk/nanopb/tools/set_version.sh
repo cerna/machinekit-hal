@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Run this from the top directory of nanopb tree.
 # e.g. user@localhost:~/nanopb$ tools/set_version.sh nanopb-0.1.9-dev

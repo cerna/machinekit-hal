@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # return a short SHA for the current HEAD, or text describing the situation
 

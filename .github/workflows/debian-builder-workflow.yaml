@@ -474,7 +474,8 @@ jobs:
           sudo mount -t tmpfs -o size=50m tmpfs ${ROOT_DIR}/secrets_mountpoint
           echo "$SIGNING_KEY" > ${ROOT_DIR}/secrets_mountpoint/key.gpg
           echo "
-          #!/bin/bash -e
+          #!/usr/bin/env bash
+          set -e
           gpg --homedir /secrets_mountpoint/.gnupg -v --batch --import \
             '/secrets_mountpoint/key.gpg'
           find /machinekit-hal -maxdepth 1 -name *.deb -print0 | \
