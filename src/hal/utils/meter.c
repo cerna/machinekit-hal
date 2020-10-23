@@ -423,7 +423,7 @@ probe_t *probe = (probe_t *) args->user_ptr1;
 		}
 	else if(args->type == HAL_PARAM)
 		{
-		hal_param_t *param = o.param;
+		hal_param_t *param = o.pin;
 		name =  (char *)ho_name(param);
 		gtk_clist_append(GTK_CLIST(probe->lists[2]), &name);
 

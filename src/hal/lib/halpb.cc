@@ -30,11 +30,6 @@ int pbadd_owned(hal_object_ptr o, foreach_args_t *args)
     machinetalk::Component *pbcomp = (machinetalk::Component *)args->user_ptr1;
     switch (type) {
     case HAL_PARAM:
-	{
-	    machinetalk::Param *pbparam = pbcomp->add_param();
-	    halpr_describe_param(o.param, pbparam);
-	}
-	break;
     case HAL_PIN:
 	{
 	    machinetalk::Pin *pbpin = pbcomp->add_pin();

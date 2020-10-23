@@ -154,7 +154,6 @@ struct halhdr;
 struct hal_comp;
 struct hal_inst;
 struct hal_pin;
-struct hal_param;
 struct hal_sig;
 struct hal_group;
 struct hal_member;
@@ -167,7 +166,7 @@ struct hal_plug;
 typedef struct hal_comp hal_comp_t;
 typedef struct hal_inst hal_inst_t;
 typedef struct hal_pin hal_pin_t;
-typedef struct hal_param hal_param_t;
+typedef hal_pin_t hal_param_t; // HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 typedef struct hal_sig hal_sig_t;
 typedef struct hal_group hal_group_t;
 typedef struct hal_member hal_member_t;
@@ -362,15 +361,15 @@ static inline  int hal_release(const char *comp) {
     'comp_id' is the ID of the component as returned from its initial
     call to 'hal_init()'.  'hal_exit()' will remove the component's
     realtime functions (if any) from realtime threads.  It also
-    removes all pins and parameters exported by the component.  If
-    the component created _any_ threads, when it exits _all_ threads
-    will be stopped, and the ones it created will be deleted.
+    removes all pins exported by the component.  If the component created
+    _any_ threads, when it exits _all_ threads will be stopped, 
+    and the ones it created will be deleted.
     It is assumed that the system will no longer function correctly
     after a component is removed, but this cleanup will prevent
     crashes when the component's code and data is unmapped.
-    'hal_exit()' calls 'rtapi_exit()', so any rtapi reaources
+    'hal_exit()' calls 'rtapi_exit()', so any rtapi resources
     allocated should be discarded before calling hal_exit(), and
-    rtapi functios should not be called afterwards.
+    rtapi functions should not be called afterwards.
     On success, hal_exit() returns 0, on failure it
     returns a negative error code.
 */
@@ -382,7 +381,7 @@ static inline int hal_exit(int comp_id) {
 
 /** hal_malloc() allocates a block of memory from the main HAL
     shared memory area.  It should be used by all components to
-    allocate memory for HAL pins and parameters.
+    allocate memory for HAL pins.
     It allocates 'size' bytes, and returns a pointer to the
     allocated space, or NULL (0) on error.  The returned pointer
     will be properly aligned for any variable HAL supports (see
@@ -475,8 +474,7 @@ void hal_print_error(const char *fmt, ...)
     Note that when a component reads or writes one of its pins, it
     is actually reading or writing the signal linked to that pin, by
     way of the pointer.
-    'hal_type_t' is an enum used to identify the type of a pin, signal,
-    or parameter.
+    'hal_type_t' is an enum used to identify the type of a pin or a signal.
 */
 typedef enum {
     HAL_TYPE_UNSPECIFIED = -1,
@@ -505,15 +503,10 @@ typedef enum {
     HAL_IO = (HAL_IN | HAL_OUT),
 } hal_pin_dir_t;
 
-/** HAL parameters also have a direction attribute.  For parameters,
-    the attribute determines whether the user can write the value
-    of the parameter, or simply read it.  HAL_RO parameters are
-    read-only, and HAL_RW ones are writable with 'halcmd setp'.
-*/
-
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 typedef enum {
-    HAL_RO = 64,
-    HAL_RW = 192,
+    HAL_RO = HAL_OUT,
+    HAL_RW = HAL_IO,
 } hal_param_dir_t;
 
 #ifdef LCNC_COMPAT
@@ -570,15 +563,6 @@ typedef struct { shmoff_t us;   } u32_sig_ptr;
 typedef struct { shmoff_t lss;  } s64_sig_ptr;
 typedef struct { shmoff_t lus;  } u64_sig_ptr;
 typedef struct { shmoff_t fs;   } float_sig_ptr;
-
-#if 0
-// params are on the way out, so dont bother
-typedef struct { shmoff_t bpar; } bit_param_ptr;
-typedef struct { shmoff_t spar; } s32_param_ptr;
-typedef struct { shmoff_t upar; } u32_param_ptr;
-typedef struct { shmoff_t fpar; } float_param_ptr;
-
-#endif
 
 /***********************************************************************
 *                        "PIN" FUNCTIONS                               *
@@ -803,31 +787,13 @@ static inline int hal_unlink(const char *pin_name) {
 }
 
 /***********************************************************************
-*                     "PARAMETER" FUNCTIONS                            *
+*               "PARAMETER" FUNCTIONS - DO NOT USE                     *
 ************************************************************************/
 
-
-/** 'hal_param_new()' creates a new 'parameter' object.  It is a generic
-    version of the eight functions above.  It is provided ONLY for those
-    special cases where a generic function is needed.  It is STRONGLY
-    recommended that the functions above be used instead, because they
-    check the type of 'data_addr' against the parameter type at compile
-    time.  Using this function requires a cast of the 'data_addr' argument
-    that defeats type checking and can cause subtle bugs.
-    'name', 'data_addr' and 'owner_id' are the same as in the
-    functions above.
-    'type' is the hal type of the new parameter - the type of data
-    that will be stored in the parameter.
-    'dir' is the parameter direction.  HAL_RO paramters are read only from
-    outside, and are written to by the component itself, typically to provide a
-    view "into" the component for testing or troubleshooting.  HAL_RW
-    parameters are writable from outside and also sometimes modified by the
-    component itself as well.
-    If successful, hal_param_new() returns 0.  On failure
-    it returns a negative error code.
-*/
+// IMPORTANT: HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 
 // v2 base function
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 hal_param_t *halg_param_newfv(const int use_hal_mutex,
 			      hal_type_t type,
 			      hal_param_dir_t dir,
@@ -835,6 +801,7 @@ hal_param_t *halg_param_newfv(const int use_hal_mutex,
 			      int owner_id,
 			      const char *fmt, va_list ap);
 
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 int hal_param_newf(hal_type_t type,
 		   hal_param_dir_t dir,
 		   volatile void *data_addr,
@@ -843,6 +810,7 @@ int hal_param_newf(hal_type_t type,
     __attribute__((format(printf,5,6)));
 
 // generic printf-style version of halg_param_newfv()
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 hal_pin_t * halg_param_newf(const int use_hal_mutex,
 		    hal_type_t type,
 		    hal_param_dir_t dir,
@@ -852,6 +820,7 @@ hal_pin_t * halg_param_newf(const int use_hal_mutex,
     __attribute__((format(printf,6,7)));
 
 // legacy
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 static inline int
 hal_param_new(const char *name,
 	      hal_type_t type,
@@ -863,104 +832,44 @@ hal_param_new(const char *name,
 			    data_addr, owner_id, "%s", name) == NULL ? _halerrno : 0;
 }
 
-/** There is no 'hal_param_delete()' function.  Once a component has
-    created a parameter, that parameter remains as long as the
-    component exists.  All parameters belonging to a component are
-    removed when the component calls 'hal_exit()'.
-*/
-
-/** The 'hal_param_xxx_new()' functions create a new 'parameter' object.
-    A parameter is a value that is only used inside a component, but may
-    need to be initialized or adjusted from outside the component to set
-    up the system properly.
-    Once a parameter has been created, it's value can be changed using
-    the 'hal_param_xxx_set()' functions.
-    There are eight functions, one for each of the data types that
-    the HAL supports.  Pins may only be linked to signals of the same
-    type.
-    'name' is the name of the new parameter.  It must be no longer than
-    .HAL_NAME_LEN.  If there is already a parameter with the same
-    name the call will fail.
-    'dir' is the parameter direction.  HAL_RO paramters are read only from
-    outside, and are written to by the component itself, typically to provide a
-    view "into" the component for testing or troubleshooting.  HAL_RW
-    parameters are writable from outside and also sometimes modified by the
-    component itself as well.
-    'data_addr' is the address where the value of the parameter is to be
-    stored.  'data_addr' must point to memory allocated by hal_malloc().
-    Typically the component allocates space for a data structure with
-    hal_malloc(), and 'data_addr' is the address of a member of that
-    structure.  Creating the paremeter does not initialize or modify the
-    value at *data_addr - the component should load a reasonable default
-    value.
-    'owner_id' is the ID of the component that will 'own' the parameter.
-    Normally it should be the ID of the caller, but in some cases, a
-    user mode component may be doing setup for a realtime component, so
-    the ID should be that of the realtime component that will actually
-    be using the parameter.
-    If successful, the hal_param_xxx_new() functions return 0.
-    On failure they return a negative error code.
-
-    use for non-instantiable comps only.
-
-*/
-
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 static inline int hal_param_bit_new(const char *name, hal_param_dir_t dir,
 				    hal_bit_t * data_addr, int owner_id) {
     return  hal_param_new(name, HAL_BIT, dir,data_addr, owner_id);
 }
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 static inline int hal_param_float_new(const char *name, hal_param_dir_t dir,
     hal_float_t * data_addr, int owner_id) {
     return  hal_param_new(name, HAL_FLOAT, dir,data_addr, owner_id);
 }
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 static inline int hal_param_u32_new(const char *name, hal_param_dir_t dir,
     hal_u32_t * data_addr, int owner_id) {
     return  hal_param_new(name, HAL_U32, dir,data_addr, owner_id);
 }
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 static inline int hal_param_s32_new(const char *name, hal_param_dir_t dir,
     hal_s32_t * data_addr, int owner_id) {
     return  hal_param_new(name, HAL_S32, dir,data_addr, owner_id);
 }
 
-/** 'hal_param_new()' creates a new 'parameter' object.  It is a generic
-    version of the eight functions above.  It is provided ONLY for those
-    special cases where a generic function is needed.  It is STRONGLY
-    recommended that the functions above be used instead, because they
-    check the type of 'data_addr' against the parameter type at compile
-    time.  Using this function requires a cast of the 'data_addr' argument
-    that defeats type checking and can cause subtle bugs.
-    'name', 'data_addr' and 'owner_id' are the same as in the
-    functions above.
-    'type' is the hal type of the new parameter - the type of data
-    that will be stored in the parameter.
-    'dir' is the parameter direction.  HAL_RO paramters are read only from
-    outside, and are written to by the component itself, typically to provide a
-    view "into" the component for testing or troubleshooting.  HAL_RW
-    parameters are writable from outside and also sometimes modified by the
-    component itself as well.
-    If successful, hal_param_new() returns 0.  On failure
-    it returns a negative error code.
-*/
-
 /** printf_style-style versions of hal_param_XXX_new */
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 extern int hal_param_bit_newf(hal_param_dir_t dir,
     hal_bit_t * data_addr, int owner_id, const char *fmt, ...)
 	__attribute__((format(printf,4,5)));
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 extern int hal_param_float_newf(hal_param_dir_t dir,
     hal_float_t * data_addr, int owner_id, const char *fmt, ...)
 	__attribute__((format(printf,4,5)));
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 extern int hal_param_u32_newf(hal_param_dir_t dir,
     hal_u32_t * data_addr, int owner_id, const char *fmt, ...)
 	__attribute__((format(printf,4,5)));
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 extern int hal_param_s32_newf(hal_param_dir_t dir,
     hal_s32_t * data_addr, int owner_id, const char *fmt, ...)
 	__attribute__((format(printf,4,5)));
-
-/** There is no 'hal_param_delete()' function.  Once a component has
-    created a parameter, that parameter remains as long as the
-    component exists.  All parameters belonging to a component are
-    removed when the component calls 'hal_exit()'.
-*/
 
 
 /***********************************************************************
@@ -989,13 +898,7 @@ extern int hal_get_pin_value_by_name(
 extern int hal_get_signal_value_by_name(
     const char *hal_name, hal_type_t *type, hal_data_u **data, bool *has_writers);
 
-/** 'hal_get_param_value_by_name()' returns the value of any arbitrary HAL
- * parameter by parameter name.
- *
- * The 'type' and 'data' args are pointers to the returned values.  The function
- * returns 0 if successful, or -1 on error.
- */
-
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 extern int hal_get_param_value_by_name(
     const char *hal_name, hal_type_t *type, hal_data_u **data);
 
@@ -1220,8 +1123,8 @@ int hal_call_usrfunct(const char *name, const int argc,
 
 // create named instance blob owned by a comp, returns instance ID
 // the instance id can be used in lieu of the comp_id params of
-// functs,pins and params.
-// the corrsponding parameter in the funct/pin/parm calls (formerly
+// functs and pins.
+// the corrsponding parameter in the funct/pin calls (formerly
 // comp_id) is now called owner_id, and can either originate from
 // a hal_init/hal_xinit call, or a hal_inst_create call.
 // returns < 0 on error.
@@ -1242,7 +1145,6 @@ static inline int hal_inst_create(const char *name,
 
 // delete a named instance.
 // unlinks & deletes all pins owned by this instance
-// deletes params owned by this instance
 // delf's and deletes functs expored by this instance
 // returns < 0 on error.
 int halg_inst_delete(const int use_hal_mutex, const char *name);

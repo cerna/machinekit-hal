@@ -235,9 +235,9 @@ static int yield_paramstrname(hal_object_ptr o, foreach_args_t *args)
 {
 size_t len = strlen(args->user_ptr1);
    
-    if( (strncmp(args->user_ptr1, hh_get_name(&o.param->hdr), len) == 0 )) 
+    if( (strncmp(args->user_ptr1, hh_get_name(&o.pin->hdr), len) == 0 )) 
         {
-        args->result = strdup(hh_get_name(&o.param->hdr));
+        args->result = strdup(hh_get_name(&o.pin->hdr));
         return 1;
         }
 
@@ -369,7 +369,7 @@ static int yield_setpp(hal_object_ptr o, foreach_args_t *args)
 
     switch (hh_get_object_type(o.hdr)) {
     case HAL_PARAM:
-	if (o.param->dir != HAL_RO) {
+	if (o.pin->dir != (hal_pin_dir_t)HAL_RO) {
 	    args->result = strdup(hh_get_name(o.hdr));
 	    return 1;
 	}

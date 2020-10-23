@@ -1043,7 +1043,7 @@ scope_chan_t *chan;
 		}
 	else if(args->type == HAL_PARAM)
 		{
-		hal_param_t *param = o.param;
+		hal_param_t *param = o.pin;
 		name = (char *)ho_name(param);
 		row = gtk_clist_append(GTK_CLIST(vert->lists[2]), &name);
 		}

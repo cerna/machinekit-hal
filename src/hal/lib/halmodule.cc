@@ -1072,7 +1072,7 @@ PyObject *set_p(PyObject *self, PyObject *args) {
         // found it
         type = param->type;
         /* is it read only? */
-        if (param->dir == HAL_RO) {
+        if (param->dir == (hal_pin_dir_t)HAL_RO) {
             rtapi_mutex_give(&(hal_data->mutex));
 
             PyErr_Format(PyExc_RuntimeError,

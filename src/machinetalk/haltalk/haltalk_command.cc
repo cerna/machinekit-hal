@@ -105,7 +105,7 @@ validate_component(const char *name, const machinetalk::Component *pbcomp, machi
     }
 
     int npins = halpr_pin_count(name);
-    int nparams  = halpr_param_count(name);
+    int nparams  = halpr_pin_count(name);
     int npbpins = pbcomp->pin_size();
     int npbparams = pbcomp->param_size();
     std::string s;
@@ -194,7 +194,7 @@ validate_component(const char *name, const machinetalk::Component *pbcomp, machi
                 hp->type, p.type());
             }
 
-            if (hp->dir != (hal_param_dir_t) p.dir()) {
+            if (hp->dir != (hal_pin_dir_t)(p.dir())) {
                 note_printf(e, "HAL param '%s' direction mismatch: hal=%d pb=%d",
                             hp->dir, p.dir());
             }

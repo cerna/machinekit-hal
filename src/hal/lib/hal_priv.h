@@ -67,10 +67,10 @@
 
 /** At runtime, the HAL consists of a pile of interconnected data
     structures in a block of shared memory.  There are linked lists
-    of components, pins, signals, parameters, functions, and threads.
+    of components, pins, signals, functions, and threads.
     Most of the lists are sorted by name, and each of these lists is
-    cross linked to the others.  All pins, parameters, functions, and
-    threads are linked to the component that created them.  In addition,
+    cross linked to the others.  All pins, functions, and threads are
+    linked to the component that created them.  In addition,
     pins are linked to signals, and functions are linked to threads.
     On top of that, when items are deleted, they are stored in (you
     guessed it) linked lists for possible reuse later.
@@ -154,7 +154,6 @@ typedef union {
     hal_comp_t   *comp;
     hal_inst_t   *inst;
     hal_pin_t    *pin;
-    hal_param_t  *param;
     hal_sig_t    *sig;
     hal_group_t  *group;
     hal_member_t *member;
@@ -273,9 +272,9 @@ typedef struct hal_comp {
     hal_destructor_t dtor;      // may be NULL
                                 // the default destructor will be called regardless
                                 // after any custom destructor, and will delete any
-                                // pin, params and functs
+                                // pin and functs
                                 // owned by a particular instance
-                                // hal_exit() will delete any pins/params/functs
+                                // hal_exit() will delete any pins/functs
                                 // directlly owned by the component (i.e. not an inst)
 
     int insmod_args;		/* args passed to insmod when loaded */
@@ -333,46 +332,30 @@ typedef struct hal_sig {
     int bidirs;			/* number of I/O pins linked */
 } hal_sig_t;
 
-
-
-/** HAL 'parameter' data structure.
-    This structure contains information about a 'parameter' object.
-*/
-typedef struct hal_param {
-    halhdr_t hdr;		// common HAL object header
-    hal_data_u value;       	// v2: actual value, data_ptr == 0
-    int data_ptr;		/* offset of parameter value */
-    hal_type_t type;		/* data type */
-    hal_param_dir_t dir;	/* data direction */
-
-} hal_param_t;
-
-//hal_param_t MK_DEPRECATED;
-
-
 static inline const hal_type_t sig_type(const hal_sig_t *sig) {
     return sig->type;
 }
+
 static inline const hal_type_t pin_type(const hal_pin_t *pin) {
     return pin->type;
 }
+
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
 static inline const hal_type_t param_type(const hal_param_t *param) {
-    return param->type;
+    return pin_type(param);
 }
-static inline const hal_param_dir_t param_dir(const hal_param_t *param) {
-    return param->dir;
-}
+
 static inline const hal_pin_dir_t pin_dir(const hal_pin_t *pin) {
     return pin->dir;
 }
 
-static inline hal_data_u *sig_value(hal_sig_t *sig) {
-    return &sig->value;
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
+static inline const hal_param_dir_t param_dir(const hal_param_t *param) {
+    return (hal_param_dir_t)pin_dir((const hal_pin_t*)(hal_param_t*)param);
 }
 
-static inline hal_data_u *param_value(const hal_param_t *param)
-{
-    return (hal_data_u *)SHMPTR(param->data_ptr);
+static inline hal_data_u *sig_value(hal_sig_t *sig) {
+    return &sig->value;
 }
 
 // a pin always has a value - linked or not
@@ -384,6 +367,12 @@ static inline hal_data_u *pin_value(hal_pin_t *pin) {
 	return &s->value;
     }
     return &pin->dummysig;
+}
+
+// HAL PARAMETERS ARE DEPRECATED, DO NOT USE!
+static inline hal_data_u *param_value(const hal_param_t *param)
+{
+    return pin_value((hal_param_t*)param);
 }
 
 // a pin may refer to a signal if linked
@@ -728,12 +717,12 @@ static inline hal_inst_t *halpr_find_inst_by_name(const char *name) {
     return halg_find_object_by_name(0, HAL_INST, name).inst;
 }
 
-static inline  hal_param_t *halpr_find_param_by_name(const char *name) {
-    return halg_find_object_by_name(0, HAL_PARAM, name).param;
-}
-
 static inline hal_pin_t *halpr_find_pin_by_name(const char *name) {
     return halg_find_object_by_name(0, HAL_PIN, name).pin;
+}
+
+static inline  hal_param_t *halpr_find_param_by_name(const char *name) {
+    return halpr_find_pin_by_name(name);
 }
 
 hal_vtable_t *halg_find_vtable_by_name(const int use_hal_mutex,
@@ -766,9 +755,6 @@ static inline hal_vtable_t *halpr_find_vtable_by_id(const int id) {
 // return number of pins in a component
 int halpr_pin_count(const char *name);
 
-// return number of params in a component
-int halpr_param_count(const char *name);
-
 // hal mutex scope-locked version of halpr_find_pin_by_name()
 hal_pin_t *
 hal_find_pin_by_name(const char *name);
@@ -781,27 +767,25 @@ hal_find_pin_by_name(const char *name);
 
 // private instance API:
 
-// given the owner_id of pin, param or funct,
+// given the owner_id of pin or funct,
 // find the owning instance
-// succeeds only for pins, params, functs owned by a hal_inst_t
-// returns NULL for legacy code using comp_id for pins/params/functs
+// succeeds only for pins, functs owned by a hal_inst_t
+// returns NULL for legacy code using comp_id for pins/functs
 
 /* hal_inst_t *halg_find_inst_by_id(const int use_hal_mutex, */
 /* 				 const int id); */
 static inline hal_inst_t *halpr_find_inst_by_id(const int id)
 { return halg_find_object_by_id(0, HAL_INST, id).inst; }
 
-// given the owner_id of pin, param or funct,
+// given the owner_id of pin or funct,
 // find the owning component regardless whether the object
 // was created by an instance id, or a comp id
-// always succeeds for pins, params, functs
+// always succeeds for pins, functs
 hal_comp_t *halpr_find_owning_comp(const int owner_id);
 
 /* // iterators - by instance id */
 /* hal_pin_t *halpr_find_pin_by_instance_id(const int inst_id, */
 /* 					 const hal_pin_t * start); */
-/* hal_param_t *halpr_find_param_by_instance_id(const int inst_id, */
-/* 					     const hal_param_t * start); */
 /* hal_funct_t *halpr_find_funct_by_instance_id(const int inst_id, */
 /* 					     const hal_funct_t * start); */
 
@@ -811,7 +795,6 @@ hal_comp_t *halpr_find_owning_comp(const int owner_id);
 
 // iterators - by owner id, which can refer to either a comp or an instance
 hal_pin_t *halpr_find_pin_by_owner_id(const int owner_id, hal_pin_t * start);
-// hal_param_t *halpr_find_param_by_owner_id(const int owner_id, hal_param_t * start);
 hal_funct_t *halpr_find_funct_by_owner_id(const int owner_id, hal_funct_t * start);
 
 

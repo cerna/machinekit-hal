@@ -37,7 +37,6 @@ char *fmt_args(char *buffer,
     return s;
 }
 
-
 // return number of pins in a component, legacy or all-insts
 int halpr_pin_count(const char *name)
 {
@@ -56,23 +55,6 @@ int halpr_pin_count(const char *name)
         args.owning_comp = ho_id(comp);
     }
 
-    return halg_foreach(0, &args, NULL);
-}
-
-// return number of params in a component, legacy or all-insts
-int
-halpr_param_count(const char *name)
-{
-    CHECK_NULL(name);
-    CHECK_HALDATA();
-    hal_comp_t *comp = halpr_find_comp_by_name(name);
-    if (comp == 0)
-	HALFAIL_RC(ENOENT, "no such comp: '%s'", name);
-
-    foreach_args_t args =  {
-	.type = HAL_PARAM,
-	.owning_comp = ho_id(comp),
-    };
     return halg_foreach(0, &args, NULL);
 }
 

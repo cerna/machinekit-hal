@@ -727,7 +727,7 @@ int do_setp_cmd(char *name, char *value)
         /* found it */
         type = param->type;
         /* is it read only? */
-        if (param->dir == HAL_RO) {
+        if (param->dir == (hal_pin_dir_t)HAL_RO) {
             rtapi_mutex_give(&(hal_data->mutex));
             halcmd_error("param '%s' is not writable\n", name);
             return -EINVAL;
@@ -2324,7 +2324,7 @@ static void print_script_sig_info(int type, char **patterns)
 
 static int print_param_line(hal_object_ptr o, foreach_args_t *args)
 {
-    hal_param_t *param = o.param;
+    hal_param_t *param = o.pin;
 
     if ( match(args->user_ptr1, ho_name(param))) {
 	int param_owner_id = ho_owner_id(param);
@@ -2801,10 +2801,10 @@ static const char *param_data_dir(int dir)
     const char *param_dir;
 
     switch (dir) {
-    case HAL_RO:
+    case (hal_pin_dir_t)HAL_RO:
 	param_dir = "RO";
 	break;
-    case HAL_RW:
+    case (hal_pin_dir_t)HAL_RW:
 	param_dir = "RW";
 	break;
     default:
@@ -4251,9 +4251,9 @@ static void save_nets(FILE *dst, int arrow)
 static int save_param_line(hal_object_ptr o, foreach_args_t *args)
 {
     FILE *dst = (FILE*) args->user_ptr1;
-    hal_param_t *param = o.param;
+    hal_param_t *param = o.pin;
 
-    if (param->dir != HAL_RO){
+    if (param->dir != (hal_pin_dir_t)HAL_RO){
         //param is writable, save its value
         fprintf(dst, "setp %s %s\n", ho_name(param),
 		data_value((int) param->type, SHMPTR(param->data_ptr)));
